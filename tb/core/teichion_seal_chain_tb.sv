@@ -53,7 +53,7 @@ module teichion_seal_chain_tb;
         .receipt_tag_o          (receipt_tag_o)
     );
 
-    always #5 clk_i = ~clk_i;
+    always #5 clk_i <= ~clk_i;
 
     task automatic expect_context(
         input logic [63:0]         expected_sequence,
