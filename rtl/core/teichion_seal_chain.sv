@@ -1,4 +1,8 @@
+
+
+`timescale 1ns/1ps
 `default_nettype none
+
 
 module teichion_seal_chain #(
     parameter int unsigned TAG_BITS = 256
