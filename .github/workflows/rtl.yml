@@ -1,0 +1,47 @@
+name: RTL Verification
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verilator:
+    name: Verilator RTL Gate
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Verilator
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y verilator
+
+      - name: Lint seal-chain RTL
+        run: |
+          verilator \
+            --lint-only \
+            -Wall \
+            -Wno-fatal \
+            rtl/core/teichion_seal_chain.sv
+
+      - name: Build RTL simulation
+        run: |
+          verilator \
+            --binary \
+            --timing \
+            -Wall \
+            -Wno-fatal \
+            rtl/core/teichion_seal_chain.sv \
+            tb/core/teichion_seal_chain_tb.sv \
+            --top-module teichion_seal_chain_tb
+
+      - name: Execute RTL simulation
+        run: |
+          ./obj_dir/Vteichion_seal_chain_tb
