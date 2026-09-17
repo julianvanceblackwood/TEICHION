@@ -45,3 +45,4 @@ jobs:
       - name: Execute RTL simulation
         run: |
           ./obj_dir/Vteichion_seal_chain_tb
+          
