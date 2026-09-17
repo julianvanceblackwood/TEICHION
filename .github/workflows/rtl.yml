@@ -23,26 +23,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y verilator
 
-      - name: Lint seal-chain RTL
+      - name: Report toolchain
+        run: |
+          verilator --version
+          g++ --version
+
+      - name: Lint Generation-0 RTL and testbench
         run: |
           verilator \
             --lint-only \
+            --timing \
             -Wall \
-            -Wno-fatal \
-            rtl/core/teichion_seal_chain.sv
+            rtl/core/teichion_seal_chain.sv \
+            tb/core/teichion_seal_chain_tb.sv \
+            --top-module teichion_seal_chain_tb
 
-      - name: Build RTL simulation
+      - name: Build Generation-0 simulation
         run: |
           verilator \
             --binary \
             --timing \
             -Wall \
-            -Wno-fatal \
             rtl/core/teichion_seal_chain.sv \
             tb/core/teichion_seal_chain_tb.sv \
             --top-module teichion_seal_chain_tb
 
-      - name: Execute RTL simulation
+      - name: Execute Generation-0 simulation
         run: |
           ./obj_dir/Vteichion_seal_chain_tb
-          
