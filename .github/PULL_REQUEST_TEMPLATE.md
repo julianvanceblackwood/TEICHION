@@ -38,9 +38,9 @@ Explain every checked item:
 
 For each affected capability, classify the resulting state:
 
-- **TARGET** — intended, not implemented
-- **IMPLEMENTED** — present in source
-- **VERIFIED** — present and exercised by reproducible verification
+- **TARGET**: intended, not implemented
+- **IMPLEMENTED**: present in source
+- **VERIFIED**: present and exercised by reproducible verification
 
 Do not promote a claim without evidence.
 
