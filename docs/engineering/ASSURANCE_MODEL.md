@@ -8,9 +8,9 @@ It is a repository engineering policy, not a certification claim.
 
 The words **MUST**, **SHOULD**, and **COULD** indicate review priority:
 
-- **MUST** — required for merge or claim promotion;
-- **SHOULD** — expected unless a documented reason justifies deviation;
-- **COULD** — optional improvement.
+- **MUST**: required for merge or claim promotion;
+- **SHOULD**: expected unless a documented reason justifies deviation;
+- **COULD**: optional improvement.
 
 ## Core rule
 
@@ -68,15 +68,15 @@ A VERIFIED claim is scoped only to the conditions actually exercised.
 
 TEICHION treats the following as progressively stronger forms of evidence, without assuming that one automatically subsumes another:
 
-1. **Design rationale** — explains intended semantics.
-2. **Source implementation** — demonstrates that the mechanism exists.
-3. **Static analysis / lint** — detects classes of structural or semantic defects.
-4. **Deterministic simulation / unit test** — exercises defined behavior.
-5. **Adversarial or negative testing** — demonstrates failure behavior and invariant protection.
-6. **Independent implementation / verifier** — reduces common-mode interpretation errors.
-7. **Formal specification / proof** — demonstrates a property under formal assumptions.
-8. **Physical hardware evaluation** — exercises implementation effects absent from simulation.
-9. **Independent security review** — challenges assumptions from outside the implementation path.
+1. **Design rationale**: explains intended semantics.
+2. **Source implementation**: demonstrates that the mechanism exists.
+3. **Static analysis / lint**: detects classes of structural or semantic defects.
+4. **Deterministic simulation / unit test**: exercises defined behavior.
+5. **Adversarial or negative testing**: demonstrates failure behavior and invariant protection.
+6. **Independent implementation / verifier**: reduces common-mode interpretation errors.
+7. **Formal specification / proof**: demonstrates a property under formal assumptions.
+8. **Physical hardware evaluation**: exercises implementation effects absent from simulation.
+9. **Independent security review**: challenges assumptions from outside the implementation path.
 
 A later evidence type does not erase the need to document its assumptions.
 
