@@ -217,9 +217,9 @@ Review should consider:
 
 The following language may be used during review:
 
-- **MUST** — required before merge;
-- **SHOULD** — strongly recommended unless a documented reason justifies otherwise;
-- **COULD** — optional improvement.
+- **MUST**: required before merge;
+- **SHOULD**: strongly recommended unless a documented reason justifies otherwise;
+- **COULD**: optional improvement.
 
 ## Merge gate
 
