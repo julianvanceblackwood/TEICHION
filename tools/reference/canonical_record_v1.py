@@ -2,7 +2,8 @@
 """
 Independent reference encoder for TEICHION Canonical Seal Record V1.
 
-This module defines deterministic serialization only.
+This module defines deterministic serialization and strict structural
+validation only.
 
 It does NOT:
 - compute a TEICHION cryptographic seal;
@@ -115,6 +116,59 @@ def _require_exact_bytes(
         )
 
     return result
+
+
+def _decode_single_byte_hex(name: str, value: object) -> int:
+    if not isinstance(value, str):
+        raise CanonicalRecordError(f"{name} must be a hexadecimal string")
+
+    try:
+        decoded = bytes.fromhex(value)
+    except ValueError as exc:
+        raise CanonicalRecordError(f"{name} is not valid hexadecimal") from exc
+
+    if len(decoded) != 1:
+        raise CanonicalRecordError(f"{name} must encode exactly one byte")
+
+    return decoded[0]
+
+
+def _payload_from_vector(vector: dict[str, Any]) -> bytes:
+    has_hex = "payload_hex" in vector
+    has_repeat = "payload_repeat" in vector
+
+    if has_hex == has_repeat:
+        raise CanonicalRecordError(
+            "vector must define exactly one of payload_hex or payload_repeat"
+        )
+
+    if has_hex:
+        payload_hex = vector["payload_hex"]
+
+        if not isinstance(payload_hex, str):
+            raise CanonicalRecordError("payload_hex must be a string")
+
+        try:
+            return bytes.fromhex(payload_hex)
+        except ValueError as exc:
+            raise CanonicalRecordError("payload_hex is invalid") from exc
+
+    repeat = vector["payload_repeat"]
+
+    if not isinstance(repeat, dict):
+        raise CanonicalRecordError("payload_repeat must be an object")
+
+    byte_value = _decode_single_byte_hex(
+        "payload_repeat.byte_hex",
+        repeat.get("byte_hex"),
+    )
+    count = _require_uint(
+        "payload_repeat.count",
+        repeat.get("count"),
+        _U32_MAX,
+    )
+
+    return bytes([byte_value]) * count
 
 
 def encode_record(
@@ -294,12 +348,7 @@ def encode_receipt(
         payload_length,
     )
 
-    encoded = (
-        RECEIPT_DOMAIN
-        + header
-        + previous_seal_bytes
-        + seal_bytes
-    )
+    encoded = RECEIPT_DOMAIN + header + previous_seal_bytes + seal_bytes
 
     if len(encoded) != RECEIPT_SIZE:
         raise AssertionError(
@@ -321,12 +370,142 @@ def fixture_fingerprint(encoded: bytes | bytearray | memoryview) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _encode_positive_vector(vector: dict[str, Any]) -> bytes:
+    payload = _payload_from_vector(vector)
+
+    payload_length = _require_uint(
+        "payload_length",
+        vector.get("payload_length"),
+        _U32_MAX,
+    )
+
+    if payload_length != len(payload):
+        raise CanonicalRecordError(
+            f"payload_length says {payload_length}, actual payload is "
+            f"{len(payload)} bytes"
+        )
+
+    previous_seal_hex = vector.get("previous_seal_hex")
+
+    if not isinstance(previous_seal_hex, str):
+        raise CanonicalRecordError("previous_seal_hex must be a string")
+
+    try:
+        previous_seal = bytes.fromhex(previous_seal_hex)
+    except ValueError as exc:
+        raise CanonicalRecordError("previous_seal_hex is invalid") from exc
+
+    return encode_record(
+        epoch=_require_uint("epoch", vector.get("epoch"), _U64_MAX),
+        sequence=_require_uint("sequence", vector.get("sequence"), _U64_MAX),
+        payload=payload,
+        previous_seal=previous_seal,
+    )
+
+
+def _mutate_from_negative_vector(
+    vector: dict[str, Any],
+    positive_by_id: dict[str, bytes],
+) -> bytes:
+    base_id = vector.get("base")
+
+    if not isinstance(base_id, str) or base_id not in positive_by_id:
+        raise CanonicalRecordError("negative vector references unknown base")
+
+    mutated = bytearray(positive_by_id[base_id])
+    operation = vector.get("operation")
+
+    if operation == "xor_byte":
+        offset = _require_uint("offset", vector.get("offset"), _U32_MAX)
+        xor_value = _require_uint("xor", vector.get("xor"), 0xFF)
+
+        if offset >= len(mutated):
+            raise CanonicalRecordError("xor_byte offset is outside base vector")
+
+        mutated[offset] ^= xor_value
+        return bytes(mutated)
+
+    if operation == "set_byte":
+        offset = _require_uint("offset", vector.get("offset"), _U32_MAX)
+        value = _require_uint("value", vector.get("value"), 0xFF)
+
+        if offset >= len(mutated):
+            raise CanonicalRecordError("set_byte offset is outside base vector")
+
+        mutated[offset] = value
+        return bytes(mutated)
+
+    if operation == "truncate":
+        count = _require_uint("count", vector.get("count"), _U32_MAX)
+
+        if count == 0 or count > len(mutated):
+            raise CanonicalRecordError("truncate count must remove existing bytes")
+
+        return bytes(mutated[:-count])
+
+    if operation == "append_hex":
+        suffix_hex = vector.get("hex")
+
+        if not isinstance(suffix_hex, str):
+            raise CanonicalRecordError("append_hex requires string field hex")
+
+        try:
+            suffix = bytes.fromhex(suffix_hex)
+        except ValueError as exc:
+            raise CanonicalRecordError("append_hex contains invalid hex") from exc
+
+        if not suffix:
+            raise CanonicalRecordError("append_hex must append at least one byte")
+
+        return bytes(mutated) + suffix
+
+    raise CanonicalRecordError(f"unsupported negative operation: {operation!r}")
+
+
+def _negative_vector_rejects(
+    vector: dict[str, Any],
+    positive_by_id: dict[str, bytes],
+) -> bool:
+    operation = vector.get("operation")
+
+    try:
+        if operation == "encode_payload_repeat":
+            byte_value = _decode_single_byte_hex("byte_hex", vector.get("byte_hex"))
+            count = _require_uint("count", vector.get("count"), _U32_MAX)
+
+            previous_seal_hex = vector.get("previous_seal_hex")
+
+            if not isinstance(previous_seal_hex, str):
+                raise CanonicalRecordError(
+                    "previous_seal_hex must be a string"
+                )
+
+            encode_record(
+                epoch=_require_uint("epoch", vector.get("epoch"), _U64_MAX),
+                sequence=_require_uint(
+                    "sequence",
+                    vector.get("sequence"),
+                    _U64_MAX,
+                ),
+                payload=bytes([byte_value]) * count,
+                previous_seal=bytes.fromhex(previous_seal_hex),
+            )
+        else:
+            mutated = _mutate_from_negative_vector(vector, positive_by_id)
+            decode_record(mutated)
+
+    except (CanonicalRecordError, ValueError):
+        return True
+
+    return False
+
+
 def verify_vector_document(document: dict[str, Any]) -> list[str]:
     """
-    Verify positive serialization fixtures from a loaded vector document.
+    Verify positive and negative fixtures from a loaded vector document.
 
     Returns a list of human-readable errors. An empty list means every
-    positive fixture matched exactly.
+    positive fixture reproduced exactly and every negative fixture rejected.
     """
 
     errors: list[str] = []
@@ -336,28 +515,38 @@ def verify_vector_document(document: dict[str, Any]) -> list[str]:
     if not isinstance(vectors, list):
         return ["positive_vectors must be a list"]
 
+    positive_by_id: dict[str, bytes] = {}
+    fingerprints_by_id: dict[str, str] = {}
+    relation_checks: list[tuple[str, dict[str, Any]]] = []
+
     for vector in vectors:
+        if not isinstance(vector, dict):
+            errors.append("positive vector must be an object")
+            continue
+
         vector_id = str(vector.get("id", "<unnamed>"))
 
+        if vector_id in positive_by_id:
+            errors.append(f"{vector_id}: duplicate vector id")
+            continue
+
         try:
-            payload = bytes.fromhex(str(vector["payload_hex"]))
-            previous_seal = bytes.fromhex(str(vector["previous_seal_hex"]))
+            encoded = _encode_positive_vector(vector)
 
-            encoded = encode_record(
-                epoch=int(vector["epoch"]),
-                sequence=int(vector["sequence"]),
-                payload=payload,
-                previous_seal=previous_seal,
+            expected_hex = vector.get("canonical_hex")
+
+            if expected_hex is not None:
+                if not isinstance(expected_hex, str):
+                    raise CanonicalRecordError("canonical_hex must be a string")
+
+                if encoded.hex() != expected_hex.lower():
+                    errors.append(f"{vector_id}: canonical_hex mismatch")
+
+            expected_length = _require_uint(
+                "canonical_length",
+                vector.get("canonical_length"),
+                _U32_MAX,
             )
-
-            expected_hex = str(vector["canonical_hex"]).lower()
-            expected_length = int(vector["canonical_length"])
-            expected_fingerprint = str(
-                vector["sha256_fixture_fingerprint"]
-            ).lower()
-
-            if encoded.hex() != expected_hex:
-                errors.append(f"{vector_id}: canonical_hex mismatch")
 
             if len(encoded) != expected_length:
                 errors.append(
@@ -365,20 +554,79 @@ def verify_vector_document(document: dict[str, Any]) -> list[str]:
                     f"(expected {expected_length}, got {len(encoded)})"
                 )
 
+            expected_fingerprint = vector.get("sha256_fixture_fingerprint")
+
+            if not isinstance(expected_fingerprint, str):
+                raise CanonicalRecordError(
+                    "sha256_fixture_fingerprint must be a string"
+                )
+
             actual_fingerprint = fixture_fingerprint(encoded)
 
-            if actual_fingerprint != expected_fingerprint:
-                errors.append(
-                    f"{vector_id}: fixture fingerprint mismatch"
-                )
+            if actual_fingerprint != expected_fingerprint.lower():
+                errors.append(f"{vector_id}: fixture fingerprint mismatch")
 
             decoded = decode_record(encoded)
 
             if decoded.encode() != encoded:
                 errors.append(f"{vector_id}: decode/encode round trip mismatch")
 
+            positive_by_id[vector_id] = encoded
+            fingerprints_by_id[vector_id] = actual_fingerprint
+
+            relation = vector.get("relation")
+
+            if relation is not None:
+                if not isinstance(relation, dict):
+                    raise CanonicalRecordError("relation must be an object")
+                relation_checks.append((vector_id, relation))
+
         except (KeyError, TypeError, ValueError, CanonicalRecordError) as exc:
             errors.append(f"{vector_id}: {exc}")
+
+    for vector_id, relation in relation_checks:
+        base_id = relation.get("base")
+
+        if not isinstance(base_id, str) or base_id not in positive_by_id:
+            errors.append(f"{vector_id}: relation references unknown base")
+            continue
+
+        if positive_by_id[vector_id] == positive_by_id[base_id]:
+            errors.append(f"{vector_id}: mutation did not alter canonical bytes")
+
+        if fingerprints_by_id[vector_id] == fingerprints_by_id[base_id]:
+            errors.append(
+                f"{vector_id}: mutation did not alter fixture fingerprint"
+            )
+
+    negative_vectors = document.get("negative_vectors")
+
+    if not isinstance(negative_vectors, list):
+        errors.append("negative_vectors must be a list")
+        return errors
+
+    for vector in negative_vectors:
+        if not isinstance(vector, dict):
+            errors.append("negative vector must be an object")
+            continue
+
+        vector_id = str(vector.get("id", "<unnamed-negative>"))
+
+        if vector.get("expected") != "REJECT":
+            errors.append(f"{vector_id}: expected must be REJECT")
+            continue
+
+        if vector.get("consumes_committed_sequence") is not False:
+            errors.append(
+                f"{vector_id}: rejected input must not consume committed sequence"
+            )
+            continue
+
+        try:
+            if not _negative_vector_rejects(vector, positive_by_id):
+                errors.append(f"{vector_id}: negative vector was accepted")
+        except (KeyError, TypeError, ValueError, CanonicalRecordError) as exc:
+            errors.append(f"{vector_id}: malformed vector definition: {exc}")
 
     return errors
 
@@ -414,10 +662,13 @@ def main() -> int:
             print(f"FAIL: {error}")
         return 1
 
-    vector_count = len(document.get("positive_vectors", []))
+    positive_count = len(document.get("positive_vectors", []))
+    negative_count = len(document.get("negative_vectors", []))
+
     print(
         "PASS: "
-        f"{vector_count} canonical V1 serialization vectors reproduced exactly"
+        f"{positive_count} positive + {negative_count} negative "
+        "canonical V1 vectors verified"
     )
     return 0
 
