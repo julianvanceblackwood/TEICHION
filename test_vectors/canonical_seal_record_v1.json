@@ -2,9 +2,10 @@
   "schema": "teichion.canonical-seal-record.v1.test-vectors",
   "claim_state": "REFERENCE_SERIALIZATION_ONLY",
   "notes": [
-    "These vectors validate deterministic byte serialization only.",
+    "These vectors validate deterministic byte serialization and strict rejection behavior only.",
     "The sha256 field is a fixture fingerprint, not a TEICHION seal and not an HMAC result.",
-    "Cryptographic authenticity remains unimplemented at this stage."
+    "Cryptographic authenticity remains unimplemented at this stage.",
+    "Mutation vectors exist to prove that security-relevant field changes alter the canonical byte sequence or are rejected."
   ],
   "constants": {
     "domain_ascii": "TEICHION-SEAL-V1",
@@ -19,7 +20,7 @@
   "positive_vectors": [
     {
       "id": "genesis-empty",
-      "description": "First record of an epoch with an empty payload and zero genesis previous seal.",
+      "description": "Minimum-size V1 record: first record of an epoch with an empty payload and zero genesis previous seal.",
       "epoch": 0,
       "sequence": 0,
       "payload_hex": "",
@@ -40,48 +41,140 @@
       "canonical_length": 75,
       "canonical_hex": "5445494348494f4e2d5345414c2d56310101010000000000000000000000000000000001000000031111111111111111111111111111111111111111111111111111111111111111616263",
       "sha256_fixture_fingerprint": "9359b5c0f4161dce9385e9c9601c61d81f7ffcbbe5f83f998f9e025d7be13d8d"
+    },
+    {
+      "id": "max-payload-a5",
+      "description": "Exact Generation-1 profile maximum payload: 4096 bytes of 0xa5.",
+      "epoch": 0,
+      "sequence": 0,
+      "payload_repeat": {
+        "byte_hex": "a5",
+        "count": 4096
+      },
+      "payload_length": 4096,
+      "previous_seal_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "canonical_length": 4168,
+      "sha256_fixture_fingerprint": "bc0f0b3790d6e3bdde3944cb1580588f0fb22ebeac8c63d964cb0b12df8d808d"
+    },
+    {
+      "id": "payload-one-bit-mutation",
+      "description": "One-bit payload mutation relative to sequence-one-abc: final payload byte 0x63 becomes 0x62.",
+      "relation": {
+        "base": "sequence-one-abc",
+        "mutation": "payload_bit_flip"
+      },
+      "epoch": 0,
+      "sequence": 1,
+      "payload_hex": "616262",
+      "payload_length": 3,
+      "previous_seal_hex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "canonical_length": 75,
+      "canonical_hex": "5445494348494f4e2d5345414c2d56310101010000000000000000000000000000000001000000031111111111111111111111111111111111111111111111111111111111111111616262",
+      "sha256_fixture_fingerprint": "3e881c8dff3c0f304f5eef922ae105de047bdd417a4856db2a974b06aaa8e0a6"
+    },
+    {
+      "id": "previous-seal-one-bit-mutation",
+      "description": "One-bit previous-seal mutation relative to sequence-one-abc: first previous-seal byte 0x11 becomes 0x10.",
+      "relation": {
+        "base": "sequence-one-abc",
+        "mutation": "previous_seal_bit_flip"
+      },
+      "epoch": 0,
+      "sequence": 1,
+      "payload_hex": "616263",
+      "payload_length": 3,
+      "previous_seal_hex": "1011111111111111111111111111111111111111111111111111111111111111",
+      "canonical_length": 75,
+      "canonical_hex": "5445494348494f4e2d5345414c2d56310101010000000000000000000000000000000001000000031011111111111111111111111111111111111111111111111111111111111111616263",
+      "sha256_fixture_fingerprint": "42195809230920e481873cd4150778948efffc788dcdd364b5625924f2f24017"
+    },
+    {
+      "id": "sequence-mutation",
+      "description": "Sequence mutation relative to sequence-one-abc: sequence 1 becomes sequence 2.",
+      "relation": {
+        "base": "sequence-one-abc",
+        "mutation": "sequence_change"
+      },
+      "epoch": 0,
+      "sequence": 2,
+      "payload_hex": "616263",
+      "payload_length": 3,
+      "previous_seal_hex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "canonical_length": 75,
+      "canonical_hex": "5445494348494f4e2d5345414c2d56310101010000000000000000000000000000000002000000031111111111111111111111111111111111111111111111111111111111111111616263",
+      "sha256_fixture_fingerprint": "aa6e0ed78e5590b0a9342564871e773ba2472481de7f6b550ed094a6ed9502e9"
     }
   ],
-  "negative_cases": [
+  "negative_vectors": [
+    {
+      "id": "domain-one-bit-mutation",
+      "base": "genesis-empty",
+      "operation": "xor_byte",
+      "offset": 0,
+      "xor": 1,
+      "expected": "REJECT",
+      "consumes_committed_sequence": false
+    },
     {
       "id": "unsupported-version",
-      "mutation": "format_version=0x02",
+      "base": "genesis-empty",
+      "operation": "set_byte",
+      "offset": 16,
+      "value": 2,
       "expected": "REJECT",
       "consumes_committed_sequence": false
     },
     {
       "id": "unsupported-record-kind",
-      "mutation": "record_kind=0xff",
+      "base": "genesis-empty",
+      "operation": "set_byte",
+      "offset": 17,
+      "value": 255,
       "expected": "REJECT",
       "consumes_committed_sequence": false
     },
     {
       "id": "unsupported-algorithm",
-      "mutation": "algorithm_id=0xff",
+      "base": "genesis-empty",
+      "operation": "set_byte",
+      "offset": 18,
+      "value": 255,
       "expected": "REJECT",
       "consumes_committed_sequence": false
     },
     {
       "id": "reserved-flags-set",
-      "mutation": "flags=0x01",
-      "expected": "REJECT",
-      "consumes_committed_sequence": false
-    },
-    {
-      "id": "payload-too-large",
-      "mutation": "payload_length=4097",
+      "base": "genesis-empty",
+      "operation": "set_byte",
+      "offset": 19,
+      "value": 1,
       "expected": "REJECT",
       "consumes_committed_sequence": false
     },
     {
       "id": "truncated-payload",
-      "mutation": "declared payload length exceeds available payload bytes",
+      "base": "sequence-one-abc",
+      "operation": "truncate",
+      "count": 1,
       "expected": "REJECT",
       "consumes_committed_sequence": false
     },
     {
-      "id": "trailing-bytes",
-      "mutation": "bytes remain after the enclosing frame's accepted payload",
+      "id": "trailing-byte",
+      "base": "sequence-one-abc",
+      "operation": "append_hex",
+      "hex": "00",
+      "expected": "REJECT",
+      "consumes_committed_sequence": false
+    },
+    {
+      "id": "payload-too-large",
+      "operation": "encode_payload_repeat",
+      "byte_hex": "a5",
+      "count": 4097,
+      "epoch": 0,
+      "sequence": 0,
+      "previous_seal_hex": "0000000000000000000000000000000000000000000000000000000000000000",
       "expected": "REJECT",
       "consumes_committed_sequence": false
     }
