@@ -34,7 +34,7 @@ The integrity of these state transitions is the primary Generation-0 concern.
 
 ## Trust zones
 
-### Zone A — Host / upstream requester
+### Zone A: Host / upstream requester
 
 Generation 0 does not trust the host to define chain ordering.
 
@@ -42,7 +42,7 @@ The host or upstream environment may control request timing.
 
 Future host-originated record content is expected to be untrusted until accepted through a defined canonical framing boundary.
 
-### Zone B — Generation-0 controller
+### Zone B: Generation-0 controller
 
 The current RTL controller owns:
 
@@ -53,7 +53,7 @@ The current RTL controller owns:
 
 This is the implemented Generation-0 trust primitive.
 
-### Zone C — External tag producer
+### Zone C: External tag producer
 
 The current `tag_i` and `tag_valid_i` interface is outside the Generation-0 cryptographic trust boundary.
 
@@ -65,7 +65,7 @@ Therefore:
 
 A future cryptographic engine must replace this assumption before hardware-sealed authenticity can be claimed.
 
-### Zone D — Downstream receipt consumer
+### Zone D: Downstream receipt consumer
 
 The downstream consumer may apply backpressure through `receipt_ready_i`.
 
