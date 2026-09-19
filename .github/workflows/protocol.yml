@@ -1,0 +1,41 @@
+name: Canonical Protocol Verification
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-protocol:
+    name: Canonical Protocol Gate
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Report Python toolchain
+        run: |
+          python3 --version
+
+      - name: Compile reference implementation
+        env:
+          PYTHONWARNINGS: error
+        run: |
+          python3 -m compileall -q             tools/reference             tests/reference
+
+      - name: Reproduce canonical serialization vectors
+        env:
+          PYTHONWARNINGS: error
+        run: |
+          python3 tools/reference/canonical_record_v1.py             --vectors test_vectors/canonical_seal_record_v1.json
+
+      - name: Execute canonical protocol tests
+        env:
+          PYTHONWARNINGS: error
+        run: |
+          python3 -m unittest discover             -s tests/reference             -p 'test_*.py'             -v
