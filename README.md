@@ -16,6 +16,7 @@ It is designed around a stricter claim:
 
 That distinction defines the project.
 
+
 ---
 
 ## Current State
