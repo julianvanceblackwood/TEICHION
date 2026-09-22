@@ -12,7 +12,7 @@ TEICHION is not designed around the assumption that host telemetry is complete.
 
 It is designed around a stricter claim:
 
-> **A record that has crossed the TEICHION hardware boundary may receive guarantees about its accepted order and chain relationship. A record that never crossed that boundary cannot be inferred not to have existed.**
+> **A record that has crossed the TEICHION hardware boundary may receive guarantees about its accepted order and chain relationship. If a record never crosses that boundary, TEICHION cannot determine whether the underlying event occurred.**
 
 That distinction defines the project.
 
@@ -21,24 +21,24 @@ That distinction defines the project.
 
 ## Current State
 
-| Property                       | Status                                    |
-| ------------------------------ | ----------------------------------------- |
-| Project stage                  | Generation 0                              |
-| Primary domain                 | FPGA-backed security evidence integrity   |
-| RTL language                   | SystemVerilog                             |
-| Verification                   | Verilator lint + executable simulation    |
-| Implemented hardware primitive | Deterministic seal-chain state controller |
-| Sequence ownership             | Hardware controller                       |
-| Previous-tag ownership         | Hardware controller                       |
-| Transactions in flight         | One                                       |
-| Cryptographic engine           | Not implemented                           |
-| Canonical evidence framing     | Not implemented                           |
-| Device-key protection          | Not implemented                           |
-| Host transport                 | Not implemented                           |
-| Physical FPGA deployment       | Not yet claimed                           |
-| Production root of trust       | Not yet claimed                           |
+| Property                       | Status                                              |
+| ------------------------------ | --------------------------------------------------- |
+| Project stage                  | Generation 1 complete; Generation 2 scoped          |
+| Primary domain                 | FPGA-backed security evidence integrity             |
+| RTL language                   | SystemVerilog                                       |
+| Verification                   | Verilator + canonical protocol reference tests      |
+| Implemented hardware primitive | Deterministic seal-chain state controller           |
+| Sequence ownership             | Hardware controller                                 |
+| Previous-tag ownership         | Hardware controller                                 |
+| Transactions in flight         | One                                                 |
+| Canonical Seal Record V1       | Specified and reference-verified                    |
+| Cryptographic engine           | Not implemented                                     |
+| Device-key protection          | Not implemented                                     |
+| Host transport                 | Not implemented                                     |
+| Physical FPGA deployment       | Not yet claimed                                     |
+| Production root of trust       | Not yet claimed                                     |
 
-Generation 0 establishes deterministic chain-state semantics before cryptographic sealing, transport, key management, or physical deployment are introduced.
+Generation 0 established deterministic chain-state semantics. Generation 1 fixed the byte-exact Canonical Seal Record V1 contract and added independent reference serialization, mutation vectors, and protocol verification. Cryptographic sealing, key management, host transport, persistence, and physical deployment remain unimplemented.
 
 ---
 
@@ -488,8 +488,18 @@ Generated Verilator output is not part of the source tree and must not be commit
 TEICHION/
 │
 ├── .github/
+│   ├── PULL_REQUEST_TEMPLATE.md
 │   └── workflows/
+│       ├── protocol.yml
 │       └── rtl.yml
+│
+├── docs/
+│   ├── engineering/
+│   │   └── ASSURANCE_MODEL.md
+│   ├── protocol/
+│   │   └── CANONICAL_SEAL_RECORD_V1.md
+│   └── security/
+│       └── THREAT_MODEL.md
 │
 ├── rtl/
 │   └── core/
@@ -499,7 +509,19 @@ TEICHION/
 │   └── core/
 │       └── teichion_seal_chain_tb.sv
 │
-├── .gitignore
+├── test_vectors/
+│   └── canonical_seal_record_v1.json
+│
+├── tests/
+│   └── reference/
+│       └── test_canonical_record_v1.py
+│
+├── tools/
+│   └── reference/
+│       └── canonical_record_v1.py
+│
+├── CONTRIBUTING.md
+├── SECURITY.md
 └── README.md
 ```
 
@@ -513,57 +535,64 @@ Owns deterministic sequence, previous-tag, transaction-context, and receipt stat
 
 Executable behavioral verification for the Generation-0 controller.
 
+### `docs/protocol/CANONICAL_SEAL_RECORD_V1.md`
+
+Byte-exact V1 sealing contract, including field ownership, canonical encoding, rejection rules, and receipt layout.
+
+### `tools/reference/canonical_record_v1.py`
+
+Independent reference serializer and strict decoder used to reproduce canonical vectors.
+
+### `test_vectors/canonical_seal_record_v1.json`
+
+Machine-readable positive and negative serialization fixtures.
+
 ### `.github/workflows/rtl.yml`
 
-Continuous verification gate.
+Verilator lint, build, and simulation gate for Generation-0 RTL.
 
-A pull request is not considered technically clean merely because the source compiles.
+### `.github/workflows/protocol.yml`
 
-Lint, build, and simulation must all succeed.
+Canonical protocol verification gate for the reference encoder, vectors, and rejection tests.
+
+A pull request is not considered technically clean merely because the source compiles. The verification gates relevant to its scope must also pass.
 
 ---
 
 # Target Cryptographic Construction
 
-The long-term architecture is expected to evolve toward a construction conceptually similar to:
+Canonical Seal Record V1 now defines the exact byte sequence intended for future sealing.
+
+The target cryptographic operation is:
 
 ```text
 Seal[n] =
     HMAC-SHA-256(
         K_device,
-        Domain ||
-        Epoch ||
-        Sequence[n] ||
-        CanonicalRecord[n] ||
-        Seal[n-1]
+        CanonicalSealRecordV1[n]
     )
 ```
 
-where:
+The canonical record already binds:
 
 ```text
-K_device
-    device-bound secret material
-
-Domain
-    domain-separation identifier
-
-Epoch
-    authenticated continuity / reset context
-
-Sequence[n]
-    hardware-owned ordering value
-
-CanonicalRecord[n]
-    deterministic byte representation of accepted evidence
-
-Seal[n-1]
-    previous authenticated chain state
+domain
+format version
+record kind
+algorithm identifier
+flags
+epoch
+sequence
+payload length
+previous seal
+payload
 ```
 
-This construction is a **target architecture**, not a Generation-0 implementation claim.
+`K_device` represents future device-bound secret material and is not serialized into the record.
 
-No cryptographic tamper-resistance claim should be made until the cryptographic datapath, canonical encoding, key model, reset model, and verifier exist and pass reproducible test vectors.
+This remains a **target cryptographic architecture**, not an implemented hardware claim.
+
+No cryptographic tamper-resistance claim should be made until the cryptographic datapath, key model, reset and epoch model, and verifier exist and pass reproducible verification.
 
 ---
 
@@ -752,41 +781,25 @@ Pull requests should represent reviewable proof boundaries.
 
 # Next Proof Boundary
 
-The immediate next engineering problem is **not** hardware acceleration.
+The canonical V1 sealing contract is now fixed and executable reference vectors are in place.
 
-It is specification.
+The next proof boundary is the SHA-256 compression primitive.
 
-Before implementing SHA-256 or HMAC, TEICHION must define an unambiguous canonical sealing contract.
-
-That contract must answer:
+The immediate objective is deliberately narrower than full hashing or HMAC:
 
 ```text
-Which exact bytes are authenticated?
-
-Which values are hardware-owned?
-
-Which values are host-supplied?
-
-How are integer fields encoded?
-
-What is the byte order?
-
-How is domain separation represented?
-
-How is record length represented?
-
-How is an epoch represented?
-
-How is the previous seal incorporated?
-
-What constitutes malformed input?
-
-What constitutes hardware acceptance?
-
-What exact receipt is returned?
+512-bit message block
+        +
+256-bit chaining state
+        ↓
+SHA-256 compression primitive
+        ↓
+256-bit next chaining state
 ```
 
-Only after these semantics are fixed should the cryptographic datapath become authoritative.
+This stage must establish exact word order, 32-bit arithmetic, message-schedule behavior, 64-round execution, and agreement with an independent reference implementation.
+
+Message padding, arbitrary-length hashing, HMAC, key handling, and Canonical Seal Record integration remain separate later boundaries.
 
 ---
 
@@ -795,12 +808,19 @@ Only after these semantics are fixed should the cryptographic datapath become au
 ```text
 Generation 0
 Deterministic chain-state controller
+        [implemented and verified under current tests]
         ↓
-Canonical seal-record specification
+Generation 1
+Canonical Seal Record V1
+Independent reference encoder
+Serialization and rejection vectors
+        [implemented and verified for canonical protocol behavior]
         ↓
-Reference test vectors
+Generation 2
+SHA-256 compression primitive
+        [next]
         ↓
-SHA-256 datapath
+SHA-256 message preprocessing / multi-block hashing
         ↓
 HMAC-SHA-256 integration
         ↓

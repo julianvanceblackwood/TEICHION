@@ -2,9 +2,11 @@
 
 ## Status
 
-**Claim state: TARGET specification**
+**Document state: IMPLEMENTED specification**
 
-This document defines the proposed byte-exact record that a future TEICHION cryptographic datapath will authenticate.
+**Cryptographic enforcement state: TARGET**
+
+This document defines the byte-exact record that a future TEICHION cryptographic datapath is intended to authenticate.
 
 It does not claim that HMAC-SHA-256, protected device keys, persistent epochs, or an independent verifier are implemented today.
 
@@ -16,7 +18,7 @@ No cryptographic-authenticity claim may be promoted to IMPLEMENTED or VERIFIED m
 
 Generation 0 established deterministic chain-state semantics.
 
-Generation 1 must remove the next source of ambiguity:
+Generation 1 removes the next source of ambiguity:
 
 > **Which exact bytes does TEICHION authenticate?**
 
@@ -143,7 +145,7 @@ Seal =
 
 where `CanonicalSealRecordV1` is the byte sequence defined below.
 
-**HMAC-SHA-256 is a TARGET algorithm for this specification. It is not yet implemented by Generation 0.**
+**HMAC-SHA-256 is the TARGET algorithm for this specification. It is not yet implemented in TEICHION hardware.**
 
 The device key is not serialized into the record.
 
@@ -427,7 +429,7 @@ A V1 record may become accepted only when all of the following hold:
 
 Transport-specific framing is intentionally outside this document.
 
-The transport specification must eventually prove how conditions 1 through 8 are established.
+The transport specification must eventually prove how conditions 1 through 9 are established.
 
 ---
 
@@ -562,7 +564,7 @@ Hex dump:
 0040: 00 00 00 00 00 00 00 00
 ```
 
-A future independent vector generator must reproduce these bytes exactly.
+The independent reference encoder and machine-readable vector corpus reproduce these bytes exactly under the canonical protocol verification gate.
 
 ---
 
@@ -645,20 +647,27 @@ These distinctions are normative parts of the TEICHION security model.
 
 ---
 
-## 27. Future verification obligations
+## 27. Verification status and remaining obligations
 
-Before this specification can support a VERIFIED cryptographic claim, later work must provide:
+The current repository already provides:
 
-- independent reference encoder;
-- machine-readable serialization vectors;
-- malformed-input vectors;
+- an independent reference encoder and strict decoder;
+- machine-readable positive serialization vectors;
+- machine-readable negative and malformed-input vectors;
+- mutation coverage for payload, sequence, previous-seal, domain, version, algorithm, flags, truncation, trailing bytes, and profile bounds;
+- a canonical protocol CI gate that reproduces the vector corpus.
+
+These artifacts verify deterministic serialization and rejection behavior. They do not establish cryptographic authenticity.
+
+Before TEICHION can support a VERIFIED cryptographic claim, later work must still provide:
+
 - SHA-256 known-answer tests;
 - HMAC-SHA-256 known-answer tests;
 - RTL-to-reference differential testing;
 - key-lifecycle definition;
 - reset / epoch implementation;
 - verifier implementation;
-- negative tests demonstrating that protected mutations fail verification.
+- negative tests demonstrating that protected cryptographic mutations fail verification.
 
 Physical implementation claims require additional evidence beyond simulation.
 
@@ -688,7 +697,7 @@ These require separate issues and proof obligations.
 
 ## 29. Review questions
 
-A reviewer should be able to answer **yes** to all of the following before this contract is merged:
+A reviewer should be able to answer **yes** to all of the following for this contract:
 
 1. Is every authenticated byte defined?
 2. Is there exactly one valid encoding for the same accepted logical record?
@@ -707,4 +716,4 @@ A reviewer should be able to answer **yes** to all of the following before this 
 
 The strongest claim established by this document alone is:
 
-> **TEICHION now has a proposed deterministic V1 byte contract for future sealing and receipt generation. The contract is specification evidence only; cryptographic authenticity remains unimplemented until the datapath, key model, vectors, and verifier exist.**
+> **TEICHION has a deterministic V1 byte contract, an independent reference encoder, and machine-readable serialization and rejection vectors. These artifacts verify canonical protocol behavior, not cryptographic authenticity. Cryptographic authenticity remains unimplemented until the datapath, key model, cryptographic vectors, and verifier exist.**
