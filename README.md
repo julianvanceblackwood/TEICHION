@@ -2,373 +2,199 @@
 
 ## Hardware-Sealed Security Evidence Boundary
 
-**TEICHION is an FPGA-backed security architecture for establishing independently verifiable evidence-chain state outside the ordinary trust domain of a potentially compromised host.**
+TEICHION explores a narrow systems-security problem:
 
-The project investigates one narrow systems-security question:
+> After a security record crosses a hardware trust boundary, can its accepted order and chain relationship remain defensible even if the host later becomes untrustworthy?
 
-> **After security evidence crosses a hardware trust boundary, can its ordering and chain state remain independently defensible even if the host that produced it later becomes untrustworthy?**
+The project does not assume host telemetry is complete. It separates two questions that are often conflated:
 
-TEICHION is not designed around the assumption that host telemetry is complete.
+1. Did an event occur?
+2. Did a record cross the TEICHION acceptance boundary and become part of the hardware-owned chain?
 
-It is designed around a stricter claim:
+TEICHION addresses the second question.
 
-> **A record that has crossed the TEICHION hardware boundary may receive guarantees about its accepted order and chain relationship. If a record never crosses that boundary, TEICHION cannot determine whether the underlying event occurred.**
+A missing TEICHION record is not proof that an external event did not occur.
 
-That distinction defines the project.
+## Current state
 
+| Area | State |
+| --- | --- |
+| Project stage | Generation 1 complete, Generation 2 scoped |
+| RTL | SystemVerilog |
+| Hardware primitive | Deterministic seal-chain state controller |
+| Canonical record | V1 specified and reference-verified |
+| Protocol verification | Python reference encoder, vectors, negative tests |
+| RTL verification | Verilator lint, build, simulation |
+| Cryptographic engine | Not implemented |
+| Protected device key | Not implemented |
+| Persistent epoch | Not implemented |
+| Host transport | Not implemented |
+| Physical FPGA trust | Not claimed |
 
----
+Generation 0 established deterministic chain-state semantics.
 
-## Current State
+Generation 1 fixed the byte-exact Canonical Seal Record V1 contract and added an independent reference encoder, machine-readable vectors, strict rejection tests, and a dedicated protocol verification gate.
 
-| Property                       | Status                                              |
-| ------------------------------ | --------------------------------------------------- |
-| Project stage                  | Generation 1 complete; Generation 2 scoped          |
-| Primary domain                 | FPGA-backed security evidence integrity             |
-| RTL language                   | SystemVerilog                                       |
-| Verification                   | Verilator + canonical protocol reference tests      |
-| Implemented hardware primitive | Deterministic seal-chain state controller           |
-| Sequence ownership             | Hardware controller                                 |
-| Previous-tag ownership         | Hardware controller                                 |
-| Transactions in flight         | One                                                 |
-| Canonical Seal Record V1       | Specified and reference-verified                    |
-| Cryptographic engine           | Not implemented                                     |
-| Device-key protection          | Not implemented                                     |
-| Host transport                 | Not implemented                                     |
-| Physical FPGA deployment       | Not yet claimed                                     |
-| Production root of trust       | Not yet claimed                                     |
+Generation 2 is scoped around the SHA-256 compression primitive. HMAC, key handling, transport, persistence, and physical deployment remain separate proof boundaries.
 
-Generation 0 established deterministic chain-state semantics. Generation 1 fixed the byte-exact Canonical Seal Record V1 contract and added independent reference serialization, mutation vectors, and protocol verification. Cryptographic sealing, key management, host transport, persistence, and physical deployment remain unimplemented.
+## Security model
 
----
-
-# The Security Problem
-
-Security evidence is often collected by software operating inside the same trust domain as the system being monitored.
-
-A simplified path is:
+A simplified host-only evidence path looks like this:
 
 ```text
-Security Event
-      ↓
-Kernel / Runtime
-      ↓
+Security event
+    |
+    v
+Kernel / runtime
+    |
+    v
 Collector
-      ↓
-Host Memory
-      ↓
-Host Storage
-      ↓
-Remote Analysis
+    |
+    v
+Host memory / storage
+    |
+    v
+Analysis
 ```
 
-If privileged host software becomes compromised, the attacker may gain influence over the same mechanisms responsible for preserving evidence of the compromise.
+If the host is compromised, the mechanisms preserving evidence may share the same trust domain as the attacker.
 
-Possible failure modes include:
+TEICHION introduces a separate hardware-owned state boundary:
 
 ```text
-deletion
-modification
-reordering
-replay
-substitution
-selective suppression
-timestamp manipulation
-collector manipulation
-chain-state rollback
+Potentially compromised host
+            |
+            | presented record
+            v
++---------------------------------------------+
+|             FPGA trust boundary             |
+|                                             |
+|  acceptance                                 |
+|      |                                      |
+|      v                                      |
+|  hardware-owned sequence                    |
+|      |                                      |
+|      v                                      |
+|  previous chain state                       |
+|      |                                      |
+|      v                                      |
+|  future cryptographic sealing               |
+|      |                                      |
+|      v                                      |
+|  receipt                                    |
++---------------------------------------------+
+            |
+            v
+Independent verification
 ```
 
-Moving a log from one host process to another does not necessarily move it into a different trust domain.
-
-TEICHION explores a different boundary.
-
----
-
-# Trust Boundary
-
-The intended architecture is:
+The important distinction is:
 
 ```text
-Potentially Compromised Host
-             │
-             │ canonical evidence frame
-             ▼
-┌───────────────────────────────────────────────────────────┐
-│                 FPGA TRUST BOUNDARY                       │
-│                                                           │
-│  Frame Acceptance                                         │
-│        ↓                                                  │
-│  Hardware-Owned Sequence State                            │
-│        ↓                                                  │
-│  Previous Seal State                                      │
-│        ↓                                                  │
-│  Cryptographic Sealing                                    │
-│        ↓                                                  │
-│  Hardware-Sealed Receipt                                  │
-│                                                           │
-└───────────────────────────────────────────────────────────┘
-             │
-             ▼
-      Independent Verification
+event occurred
+    !=
+host observed event
+    !=
+record was presented
+    !=
+record was accepted
+    !=
+record received a cryptographic seal
 ```
 
-The host may eventually construct and transmit evidence records.
+Only properties supported by the implemented boundary and reproducible evidence are claimed.
 
-The hardware boundary is intended to own the state that determines how accepted records are ordered and chained.
+## Generation 0: seal-chain controller
 
-This produces an important semantic separation:
+The current RTL primitive is:
 
 ```text
-Event occurred
-        ≠
-Event was observed by host software
-        ≠
-Event was transmitted
-        ≠
-Event crossed the FPGA boundary
-        ≠
-Event received a hardware-sealed receipt
+rtl/core/teichion_seal_chain.sv
 ```
-
-These statements must never be treated as interchangeable.
-
----
-
-# Evidence Completeness
-
-TEICHION does **not** attempt to prove that host observation is complete.
-
-If an event never reaches the FPGA boundary, TEICHION cannot determine whether:
-
-```text
-the event never occurred
-
-the host failed to observe it
-
-the collector failed
-
-the host intentionally suppressed it
-
-transport failed
-
-the event was dropped before hardware acceptance
-```
-
-Therefore:
-
-```text
-absence of a TEICHION record
-            ≠
-proof of event non-occurrence
-```
-
-This is a security-model constraint, not an implementation inconvenience.
-
----
-
-# Generation 0
-
-Generation 0 implements the first TEICHION hardware primitive:
-
-```text
-teichion_seal_chain
-```
-
-Its responsibility is intentionally narrow.
 
 It owns:
 
-```text
-current sequence state
+- the next 64-bit sequence value;
+- the pending sequence value;
+- the previous accepted tag;
+- pending previous-tag context;
+- receipt sequence and tag state;
+- request, context, tag, and receipt transaction state.
 
-previous accepted tag state
+It does not compute SHA-256 or HMAC.
 
-pending transaction context
+The current `tag_i` input is externally supplied. Generation 0 verifies the state semantics around that result, not its cryptographic origin.
 
-receipt state
-
-request/context/receipt handshakes
-```
-
-It does **not** compute SHA-256 or HMAC.
-
-The current `tag_i` input represents a seal result supplied to the controller.
-
-Generation 0 proves the state semantics surrounding that result before a hardware cryptographic engine is introduced.
-
----
-
-# Generation-0 Transaction
-
-A Generation-0 transaction follows:
+### Transaction flow
 
 ```text
-Request
-   │
-   ▼
-Allocate current sequence
-   │
-   ▼
-Capture previous tag
-   │
-   ▼
-Expose sealing context
-   │
-   ▼
-Wait for tag result
-   │
-   ▼
-Commit new chain state
-   │
-   ▼
-Expose receipt
-   │
-   ▼
-Wait for receipt acceptance
-   │
-   ▼
-Return to IDLE
+request accepted
+       |
+       v
+capture sequence and previous tag
+       |
+       v
+publish context
+       |
+       v
+wait for tag
+       |
+       v
+commit next sequence and previous tag
+       |
+       v
+hold receipt until accepted
+       |
+       v
+return to IDLE
 ```
 
-Only one transaction may be active at a time.
+Only one transaction is active at a time.
 
-This is deliberate.
+The present priority is unambiguous state ownership and reproducible behavior, not throughput.
 
-The current priority is semantic correctness, not throughput.
-
----
-
-# State Machine
+### State machine
 
 ```text
-                          request accepted
-                                 │
-                                 ▼
-                           ┌──────────┐
-                           │   IDLE   │
-                           └────┬─────┘
-                                │
-                                ▼
-                       ┌────────────────┐
-                       │ SEND_CONTEXT   │
-                       └───────┬────────┘
-                               │
-                    context handshake
-                               │
-                               ▼
-                       ┌────────────────┐
-                       │    WAIT_TAG    │
-                       └───────┬────────┘
-                               │
-                         tag_valid_i
-                               │
-                               ▼
-                       ┌────────────────┐
-                       │ HOLD_RECEIPT   │
-                       └───────┬────────┘
-                               │
-                    receipt handshake
-                               │
-                               └──────────────► IDLE
+IDLE
+  |
+  | request accepted
+  v
+SEND_CONTEXT
+  |
+  | context accepted
+  v
+WAIT_TAG
+  |
+  | tag_valid_i
+  v
+HOLD_RECEIPT
+  |
+  | receipt accepted
+  v
+IDLE
 ```
 
-The controller must preserve externally visible context and receipt state while downstream components apply backpressure.
+### Verified Generation-0 properties
 
----
+Under the current deterministic testbench:
 
-# Generation-0 Invariants
+- reset establishes sequence zero and zero previous-tag genesis state;
+- accepted transactions receive sequential values within one reset epoch;
+- the next transaction observes the previous accepted tag;
+- receipt state remains stable while downstream acceptance is stalled;
+- a second transaction is not accepted while one is active;
+- the controller returns to request acceptance after receipt completion.
 
-The current implementation is intended to maintain the following invariants.
+The strongest current hardware statement is intentionally narrow:
 
-### Request ownership
+> Within one reset epoch, the Generation-0 controller provides deterministic chain-state sequencing around an externally supplied tag and preserves receipt state under the exercised backpressure conditions.
 
-An accepted request receives exactly one pending sequence context.
+## Reset and sequence limits
 
-```text
-request_valid_i && request_ready_o
-```
+Generation-0 sequence monotonicity is local to one reset epoch.
 
-defines request acceptance.
-
-### Previous-tag capture
-
-Each accepted request observes the previous accepted chain tag as it existed when the request entered the controller.
-
-### Controlled chain advancement
-
-The chain state does not advance merely because a request exists.
-
-Generation 0 advances sequence and previous-tag state only when a tag result is observed in `WAIT_TAG`.
-
-### Receipt stability
-
-Once generated, receipt sequence and tag values remain stable until the downstream receipt handshake completes.
-
-### Single transaction
-
-No second Generation-0 request may begin while the current transaction is still moving through context, tag, or receipt state.
-
----
-
-# Sequence Semantics
-
-Generation 0 contains a 64-bit sequence counter.
-
-Within one uninterrupted reset epoch:
-
-```text
-0
-1
-2
-3
-...
-```
-
-accepted transactions receive monotonically increasing values.
-
-However, this distinction is critical:
-
-> **Generation-0 monotonicity is currently intra-epoch, not persistent across hardware reset.**
-
-Reset currently returns sequence state to zero.
-
-Therefore the current implementation does **not** yet provide production anti-rollback guarantees across:
-
-```text
-power loss
-hardware reset
-device restart
-state restoration
-malicious reset
-```
-
-A future design must introduce an explicit continuity mechanism such as an authenticated epoch, protected monotonic state, or another hardware-backed persistence model.
-
----
-
-# Sequence Exhaustion
-
-The current sequence register is 64 bits.
-
-Generation 0 does not yet define a hardened production policy for sequence exhaustion.
-
-A production design must explicitly choose behavior such as:
-
-```text
-fail-stop
-
-authenticated epoch transition
-
-persistent rollover protocol
-```
-
-Silent security-semantic wraparound must not become an accidental production behavior.
-
----
-
-# Reset Semantics
-
-The Generation-0 controller uses an explicit reset state:
+Reset returns the controller to genesis:
 
 ```text
 sequence       = 0
@@ -378,71 +204,98 @@ receipt state  = 0
 controller     = IDLE
 ```
 
-This gives deterministic simulation and an explicit genesis condition.
+This is not persistent anti-rollback.
 
-It does not yet establish authenticated chain continuity across resets.
+The 64-bit sequence space also has no production exhaustion policy yet. A hardened design must define explicit fail-stop or authenticated epoch-transition behavior instead of relying on silent wraparound.
 
----
+## Canonical Seal Record V1
 
-# Verification
+Generation 1 defines the exact byte sequence intended for future authentication.
 
-Generation 0 is continuously checked with Verilator.
-
-The verification pipeline performs:
+The fixed prefix is 72 bytes:
 
 ```text
-SystemVerilog lint
-        ↓
-Executable simulation build
-        ↓
-Deterministic testbench execution
-        ↓
-PASS / FAIL
+domain[16]
+||
+format_version[1]
+||
+record_kind[1]
+||
+algorithm_id[1]
+||
+flags[1]
+||
+epoch_u64be[8]
+||
+sequence_u64be[8]
+||
+payload_length_u32be[4]
+||
+previous_seal[32]
+||
+payload[payload_length]
 ```
 
-The repository currently treats RTL warnings as engineering failures rather than silently accepting them.
+Key properties:
 
-The testbench verifies:
+- fixed field order;
+- fixed-width unsigned integers;
+- big-endian integer encoding;
+- explicit payload length;
+- no implicit padding;
+- no text normalization;
+- no optional-field ambiguity;
+- host software does not authoritatively choose epoch, sequence, or previous seal;
+- rejected input does not consume committed sequence state.
+
+The normative byte-level contract is in:
 
 ```text
-reset initialization
-
-controller readiness after reset
-
-genesis sequence allocation
-
-zero previous-tag genesis state
-
-context handshake
-
-tag acceptance
-
-receipt generation
-
-receipt stability under backpressure
-
-receipt handshake
-
-previous-tag propagation
-
-second sequence allocation
-
-return to IDLE
+docs/protocol/CANONICAL_SEAL_RECORD_V1.md
 ```
 
-Current successful simulation terminates with:
+The independent reference implementation is:
 
 ```text
-PASS: deterministic sequencing, chain carry, and receipt backpressure verified
+tools/reference/canonical_record_v1.py
 ```
 
----
+Machine-readable fixtures are in:
 
-# Reproduce Generation-0 Verification
+```text
+test_vectors/canonical_seal_record_v1.json
+```
 
-TEICHION currently uses Verilator.
+## Target cryptographic construction
 
-From the repository root:
+The current target construction is:
+
+```text
+Seal[n] =
+    HMAC-SHA-256(
+        K_device,
+        CanonicalSealRecordV1[n]
+    )
+```
+
+This is architecture, not an implemented cryptographic claim.
+
+Before cryptographic authenticity can be claimed, TEICHION still needs:
+
+- a verified SHA-256 datapath;
+- HMAC construction and known-answer coverage;
+- an explicit key lifecycle;
+- reset and epoch semantics;
+- canonical-record integration;
+- an independent verifier.
+
+Physical FPGA trust requires additional evidence beyond simulation.
+
+## Verification
+
+### RTL gate
+
+Lint:
 
 ```bash
 verilator \
@@ -454,7 +307,7 @@ verilator \
   --top-module teichion_seal_chain_tb
 ```
 
-Build the executable simulation:
+Build:
 
 ```bash
 verilator \
@@ -472,27 +325,39 @@ Run:
 ./obj_dir/Vteichion_seal_chain_tb
 ```
 
-Expected terminal result:
+Expected result:
 
 ```text
 PASS: deterministic sequencing, chain carry, and receipt backpressure verified
 ```
 
-Generated Verilator output is not part of the source tree and must not be committed.
+### Canonical protocol gate
 
----
+```bash
+python3 -m compileall -q tools/reference tests/reference
 
-# Repository Map
+python3 tools/reference/canonical_record_v1.py \
+  --vectors test_vectors/canonical_seal_record_v1.json
+
+python3 -m unittest discover \
+  -s tests/reference \
+  -p 'test_*.py' \
+  -v
+```
+
+The protocol gate verifies positive serialization fixtures, malformed-input rejection, mutation coverage, profile limits, and exact round-trip behavior.
+
+These tests establish canonical protocol behavior. They do not establish cryptographic authenticity.
+
+## Repository map
 
 ```text
 TEICHION/
-│
 ├── .github/
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── workflows/
 │       ├── protocol.yml
 │       └── rtl.yml
-│
 ├── docs/
 │   ├── engineering/
 │   │   └── ASSURANCE_MODEL.md
@@ -500,377 +365,102 @@ TEICHION/
 │   │   └── CANONICAL_SEAL_RECORD_V1.md
 │   └── security/
 │       └── THREAT_MODEL.md
-│
 ├── rtl/
 │   └── core/
 │       └── teichion_seal_chain.sv
-│
 ├── tb/
 │   └── core/
 │       └── teichion_seal_chain_tb.sv
-│
 ├── test_vectors/
 │   └── canonical_seal_record_v1.json
-│
 ├── tests/
 │   └── reference/
 │       └── test_canonical_record_v1.py
-│
 ├── tools/
 │   └── reference/
 │       └── canonical_record_v1.py
-│
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 └── README.md
 ```
 
-### `rtl/core/teichion_seal_chain.sv`
+## Source of truth
 
-Generation-0 hardware state controller.
+Each document has one primary responsibility:
 
-Owns deterministic sequence, previous-tag, transaction-context, and receipt state.
+- `README.md`: project state and architecture overview;
+- `docs/engineering/ASSURANCE_MODEL.md`: claim and evidence policy;
+- `docs/security/THREAT_MODEL.md`: implemented trust boundary and attacker model;
+- `docs/protocol/CANONICAL_SEAL_RECORD_V1.md`: byte-level V1 protocol contract;
+- `SECURITY.md`: vulnerability reporting.
 
-### `tb/core/teichion_seal_chain_tb.sv`
+When summary text and a normative document differ, the normative document governs.
 
-Executable behavioral verification for the Generation-0 controller.
+## Explicit non-properties
 
-### `docs/protocol/CANONICAL_SEAL_RECORD_V1.md`
+TEICHION does not currently establish:
 
-Byte-exact V1 sealing contract, including field ownership, canonical encoding, rejection rules, and receipt layout.
+- host telemetry completeness;
+- cryptographic authenticity;
+- protected key storage;
+- persistent anti-rollback;
+- secure boot;
+- authenticated FPGA configuration;
+- side-channel resistance;
+- fault-injection resistance;
+- physical tamper resistance;
+- production FPGA root-of-trust status.
 
-### `tools/reference/canonical_record_v1.py`
+It is also not currently a SIEM, endpoint detection product, TPM replacement, HSM, or complete forensic acquisition platform.
 
-Independent reference serializer and strict decoder used to reproduce canonical vectors.
+## Assurance discipline
 
-### `test_vectors/canonical_seal_record_v1.json`
+TEICHION uses three claim states:
 
-Machine-readable positive and negative serialization fixtures.
+- **TARGET**: intended architecture, not implemented;
+- **IMPLEMENTED**: mechanism exists in source;
+- **VERIFIED**: the stated property is exercised by reproducible verification.
 
-### `.github/workflows/rtl.yml`
+The normative rules for moving between these states live in `docs/engineering/ASSURANCE_MODEL.md`.
 
-Verilator lint, build, and simulation gate for Generation-0 RTL.
+Core engineering rule:
 
-### `.github/workflows/protocol.yml`
+> A security claim may advance only as far as its evidence.
 
-Canonical protocol verification gate for the reference encoder, vectors, and rejection tests.
-
-A pull request is not considered technically clean merely because the source compiles. The verification gates relevant to its scope must also pass.
-
----
-
-# Target Cryptographic Construction
-
-Canonical Seal Record V1 now defines the exact byte sequence intended for future sealing.
-
-The target cryptographic operation is:
-
-```text
-Seal[n] =
-    HMAC-SHA-256(
-        K_device,
-        CanonicalSealRecordV1[n]
-    )
-```
-
-The canonical record already binds:
+## Development flow
 
 ```text
-domain
-format version
-record kind
-algorithm identifier
-flags
-epoch
-sequence
-payload length
-previous seal
-payload
+problem or proof obligation
+        |
+        v
+focused branch
+        |
+        v
+implementation or specification
+        |
+        v
+local verification
+        |
+        v
+pull request
+        |
+        v
+CI and review
+        |
+        v
+merge
 ```
 
-`K_device` represents future device-bound secret material and is not serialized into the record.
+Changes should remain narrow, auditable, and reproducible. Generated artifacts, unrelated refactors, and unsupported claims do not belong in security-relevant diffs.
 
-This remains a **target cryptographic architecture**, not an implemented hardware claim.
+## Next proof boundary
 
-No cryptographic tamper-resistance claim should be made until the cryptographic datapath, key model, reset and epoch model, and verifier exist and pass reproducible verification.
+The next technical boundary is the SHA-256 compression primitive.
 
----
+The scope is deliberately limited to one 512-bit message block and one 256-bit input chaining state. Message padding, arbitrary-length hashing, HMAC, key management, canonical-record integration, and protected persistence remain later boundaries.
 
-# Threat Model Direction
+The objective is not to claim "SHA-256 support" early. The objective is to isolate the compression function, verify it against an independent reference and deterministic vectors, and only then build higher layers.
 
-The future TEICHION architecture is intended to remain meaningful when substantial portions of the host are no longer trusted.
+## Engineering principle
 
-Potentially untrusted components may eventually include:
-
-```text
-user-space applications
-
-security agents
-
-privileged host services
-
-host storage
-
-host timestamps
-
-host-generated sequence numbers
-
-local evidence databases
-
-operating-system state
-```
-
-TEICHION does not currently claim resistance to every hardware adversary.
-
-The following areas remain outside Generation 0:
-
-```text
-physical probing
-
-fault injection
-
-side-channel leakage
-
-bitstream extraction
-
-malicious FPGA configuration
-
-device-key extraction
-
-supply-chain compromise
-
-persistent reset rollback
-
-secure boot
-
-FPGA configuration authenticity
-```
-
-These properties must be addressed explicitly before production hardware-root-of-trust claims become defensible.
-
----
-
-# Cross-Platform Direction
-
-The hardware trust boundary is intended to remain independent of the operating system used by the host.
-
-Future host integration is expected to consider:
-
-```text
-Linux
-Kali Linux
-macOS
-Windows
-```
-
-No cross-platform collector is currently implemented.
-
-Cross-platform support is therefore a **target**, not a current feature.
-
----
-
-# Security Claim Classes
-
-TEICHION documentation uses three claim classes.
-
-## IMPLEMENTED
-
-The mechanism exists in the repository.
-
-## VERIFIED
-
-The mechanism exists and its stated property is exercised by reproducible verification.
-
-## TARGET
-
-The mechanism is part of the intended architecture but has not yet been implemented.
-
-A TARGET property must never be presented as IMPLEMENTED.
-
-An IMPLEMENTED property must never be presented as VERIFIED without corresponding evidence.
-
-This distinction is part of the engineering model.
-
----
-
-# What TEICHION Is Not
-
-TEICHION is not currently:
-
-```text
-a SIEM
-
-an endpoint detection product
-
-an FPGA antivirus
-
-a packet inspection appliance
-
-a TPM replacement
-
-a production HSM
-
-a complete forensic acquisition platform
-
-a proof that host telemetry is complete
-```
-
-The scope is narrower:
-
-> **Build a defensible hardware boundary for accepted security evidence and prove exactly what that boundary does and does not guarantee.**
-
----
-
-# Engineering Rules
-
-TEICHION development follows several non-negotiable rules.
-
-```text
-No security property exists because documentation claims it.
-
-No hardware component becomes a root of trust by naming alone.
-
-No cryptographic primitive is accepted without reproducible test vectors.
-
-No host-controlled value becomes hardware truth without an explicit trust decision.
-
-No missing observation becomes proof of non-occurrence.
-
-No state transition affecting a security property remains implicit.
-
-No optimization may silently weaken an established invariant.
-
-No future architecture is documented as though it already exists.
-```
-
----
-
-# Development Discipline
-
-Engineering work should follow:
-
-```text
-Security or systems problem
-        ↓
-Meaningful GitHub issue
-        ↓
-Focused feature branch
-        ↓
-Semantically coherent commits
-        ↓
-Local verification
-        ↓
-Pull request
-        ↓
-CI verification
-        ↓
-Review
-        ↓
-Merge into main
-```
-
-GitHub issues represent meaningful engineering problems.
-
-They are not created merely to inflate activity.
-
-Commits should communicate technical intent.
-
-Pull requests should represent reviewable proof boundaries.
-
----
-
-# Next Proof Boundary
-
-The canonical V1 sealing contract is now fixed and executable reference vectors are in place.
-
-The next proof boundary is the SHA-256 compression primitive.
-
-The immediate objective is deliberately narrower than full hashing or HMAC:
-
-```text
-512-bit message block
-        +
-256-bit chaining state
-        ↓
-SHA-256 compression primitive
-        ↓
-256-bit next chaining state
-```
-
-This stage must establish exact word order, 32-bit arithmetic, message-schedule behavior, 64-round execution, and agreement with an independent reference implementation.
-
-Message padding, arbitrary-length hashing, HMAC, key handling, and Canonical Seal Record integration remain separate later boundaries.
-
----
-
-# Planned Proof Boundaries
-
-```text
-Generation 0
-Deterministic chain-state controller
-        [implemented and verified under current tests]
-        ↓
-Generation 1
-Canonical Seal Record V1
-Independent reference encoder
-Serialization and rejection vectors
-        [implemented and verified for canonical protocol behavior]
-        ↓
-Generation 2
-SHA-256 compression primitive
-        [next]
-        ↓
-SHA-256 message preprocessing / multi-block hashing
-        ↓
-HMAC-SHA-256 integration
-        ↓
-Device-key model
-        ↓
-Reset / epoch / rollback continuity
-        ↓
-Independent verifier
-        ↓
-Host transport abstraction
-        ↓
-Cross-platform host integration
-        ↓
-Physical FPGA reference platform
-        ↓
-Adversarial hardware evaluation
-```
-
-The order may change as engineering evidence develops.
-
-The security claims must not.
-
----
-
-# Current Verified Boundary
-
-As of Generation 0, TEICHION verifies a narrow property:
-
-> **Within one reset epoch, a single-transaction FPGA controller deterministically allocates sequence context, carries forward the previous accepted tag, advances chain state after tag acceptance, and preserves receipt state under downstream backpressure.**
-
-It does **not** yet verify:
-
-```text
-cryptographic authenticity
-
-persistent anti-rollback
-
-host telemetry completeness
-
-device-key secrecy
-
-physical tamper resistance
-
-production FPGA trust
-```
-
-That boundary is intentionally explicit.
-
----
-
-## Engineering Principle
-
-> **A security system becomes more credible when it can state precisely where its guarantees end.**
+> Move the trust boundary only when the evidence moves with it.
