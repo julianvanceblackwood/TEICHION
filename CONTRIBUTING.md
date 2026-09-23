@@ -1,29 +1,27 @@
 # Contributing to TEICHION
 
-TEICHION is a hardware-security research project. Contributions are evaluated not only for whether they compile, but for whether their claims, trust assumptions, state transitions, and verification evidence remain reviewable.
-
-The project prefers small, issue-backed, security-auditable changes over broad refactors.
+TEICHION accepts small, reviewable changes that keep security claims, state ownership, and verification evidence explicit.
 
 ## Before implementing
 
 For non-trivial work:
 
-1. Search existing issues.
-2. Open or select an issue that defines the engineering problem.
-3. State the required proof obligations, non-goals, and security-boundary impact.
-4. Create a focused branch from the current `main`.
+1. identify the engineering problem or proof obligation;
+2. confirm the current trust boundary and non-goals;
+3. branch from the current `main`;
+4. keep the change narrow enough to audit.
 
-Do not invest significant implementation effort in a cross-cutting change before its scope is written down.
-
-Documentation-only typo fixes may proceed without a dedicated issue when they do not alter technical meaning.
+Documentation-only corrections that do not change technical meaning may proceed without a dedicated issue.
 
 ## Branch discipline
 
-Start from a clean and current `main`:
+Start from a clean, current `main`:
 
 ```bash
+git fetch origin --prune
 git switch main
 git pull --ff-only origin main
+git status
 git switch -c <type>/<meaningful-name>
 ```
 
@@ -38,24 +36,23 @@ ci/
 refactor/
 ```
 
-A branch should represent one reviewable engineering purpose.
+One branch should represent one engineering purpose.
 
 ## Local preflight
 
-Before modifying the repository:
+Before editing:
 
 ```bash
-git fetch origin --prune
 git status
 git branch --show-current
 git diff --check
 ```
 
-Unexpected local modifications, generated files, or branch divergence should be resolved before new work begins.
+Resolve unexpected local changes or branch divergence before starting new work.
 
-## Generation-0 verification gate
+## Verification gates
 
-Changes touching current SystemVerilog RTL, its testbench, or the verification workflow must pass the local gate before push.
+### Generation-0 RTL
 
 Lint:
 
@@ -93,30 +90,39 @@ Expected result:
 PASS: deterministic sequencing, chain carry, and receipt backpressure verified
 ```
 
-A warning-clean result is required. Do not silence a new warning merely to recover a green build unless the warning is proven irrelevant and the suppression is itself reviewed.
+### Canonical protocol
+
+```bash
+python3 -m compileall -q tools/reference tests/reference
+
+python3 tools/reference/canonical_record_v1.py \
+  --vectors test_vectors/canonical_seal_record_v1.json
+
+python3 -m unittest discover \
+  -s tests/reference \
+  -p 'test_*.py' \
+  -v
+```
+
+A relevant change must pass its local gate before push and its GitHub Actions gate before merge.
 
 ## Change hygiene
 
-Contributions MUST:
+Every contribution must:
 
-- keep generated artifacts out of Git;
 - pass `git diff --check`;
-- avoid unrelated formatting or refactoring;
-- keep test changes traceable to the behavior being tested;
+- exclude generated artifacts unless repository policy explicitly versions them;
+- avoid unrelated formatting and refactors;
+- keep tests traceable to the behavior they protect;
 - preserve explicit reset and handshake semantics;
-- update documentation when a security boundary changes;
-- avoid capability claims unsupported by implementation and verification.
+- update the relevant normative document when a trust boundary changes;
+- avoid claims unsupported by implementation and evidence.
 
-Contributions SHOULD:
-
-- be the smallest reasonable patch that solves the stated problem;
-- separate independent changes into separate commits or pull requests;
-- use imperative, descriptive commit messages;
-- explain why a state transition or interface exists, not only what code changed.
+Prefer the smallest patch that solves the stated problem.
 
 ## Commit discipline
 
-Before each commit:
+Before a commit:
 
 ```bash
 git diff --check
@@ -124,7 +130,7 @@ git status --short
 git diff
 ```
 
-Stage only the intended file or coherent change:
+Stage only the intended change:
 
 ```bash
 git add <path>
@@ -132,105 +138,94 @@ git diff --cached --check
 git diff --cached
 ```
 
-Then commit.
+Commit messages should describe technical intent, not activity.
 
-TEICHION prefers semantically coherent commits over large catch-all commits.
-
-Cryptographically signed commits are encouraged now and are expected to become mandatory before the first tagged security-sensitive release.
+Cryptographically signed commits are encouraged for security-sensitive work.
 
 ## Claim discipline
 
-TEICHION uses three documentation states:
+TEICHION uses three claim states:
 
-### TARGET
+- **TARGET**: intended, not implemented;
+- **IMPLEMENTED**: present in source;
+- **VERIFIED**: present and exercised by reproducible verification.
 
-Part of the intended architecture, but not implemented.
+The normative promotion rules live in `docs/engineering/ASSURANCE_MODEL.md`.
 
-### IMPLEMENTED
+A contribution must not:
 
-The mechanism exists in the repository.
-
-### VERIFIED
-
-The mechanism exists and the stated property is exercised by reproducible verification.
-
-A contribution MUST NOT:
-
-- describe TARGET behavior as implemented;
-- describe IMPLEMENTED behavior as verified without evidence;
+- describe target behavior as implemented;
+- describe implemented behavior as verified without evidence;
+- convert reset-local ordering into persistent anti-rollback;
 - infer event non-occurrence from missing telemetry;
-- convert a reset-local guarantee into a persistent guarantee;
 - describe externally supplied Generation-0 `tag_i` as cryptographically trusted.
 
 ## Security-sensitive changes
 
-Changes affecting any of the following require explicit security analysis in the pull request:
+Explicit security analysis is required when a change affects:
 
-- trust boundaries;
+- trust ownership;
 - sequence or epoch state;
-- previous-seal state;
-- reset behavior;
+- previous-chain state;
+- reset or rollback semantics;
 - acceptance semantics;
 - canonical serialization;
 - cryptographic primitives;
 - key handling;
-- transport framing;
 - persistent state;
+- host transport;
 - independent verification;
 - FPGA configuration or boot trust.
 
-Potential vulnerabilities must follow `SECURITY.md`. Do not place sensitive exploit details in a public issue.
+Potential vulnerabilities must follow `SECURITY.md`.
 
 ## Pull requests
 
-A pull request should answer:
+A pull request should make the following clear:
 
-- What problem is being solved?
-- Which issue or proof obligation authorizes the change?
-- What changed?
-- What deliberately did not change?
-- Which security assumptions changed?
-- Which properties are now TARGET, IMPLEMENTED, or VERIFIED?
-- What exact commands reproduce verification?
-- What known limitations remain?
+- problem or proof obligation;
+- exact scope;
+- deliberate non-goals;
+- security-boundary impact;
+- claim-state changes;
+- reproducible verification;
+- known limitations;
+- highest-risk reasoning.
 
-Large pull requests that combine unrelated work are difficult to audit and may be split before review.
+The repository template exists to make those questions explicit, not to create checkbox theater.
 
 ## Review standard
 
-Review is technical cross-examination, not ceremonial approval.
-
-Review should consider:
+Review should challenge:
 
 - functional correctness;
 - state-machine correctness;
-- security-boundary correctness;
-- reset and rollback semantics;
-- evidence integrity;
-- malformed-input behavior;
-- error and backpressure behavior;
-- portability claims;
-- performance claims;
-- test coverage;
+- trust ownership;
+- reset and rollback behavior;
+- malformed-input handling;
+- backpressure and error behavior;
+- overflow and boundary conditions;
+- test strength;
 - documentation accuracy;
-- unnecessary complexity or scope creep.
+- unnecessary complexity;
+- unsupported portability or performance claims.
 
-The following language may be used during review:
+Review language:
 
 - **MUST**: required before merge;
-- **SHOULD**: strongly recommended unless a documented reason justifies otherwise;
+- **SHOULD**: expected unless a documented reason justifies deviation;
 - **COULD**: optional improvement.
 
 ## Merge gate
 
-A change is ready to merge only when:
+A change is ready only when:
 
-- the diff matches the issue scope;
-- local required checks pass;
+- the diff matches its stated scope;
+- required local checks pass;
 - GitHub CI passes;
 - no known warning or failing verification remains;
 - security-impact statements are complete;
-- documentation matches actual behavior;
+- normative documentation matches implementation;
 - unresolved review findings are closed.
 
-A green CI result is necessary, but not sufficient, for merge.
+A green build is necessary, not sufficient.

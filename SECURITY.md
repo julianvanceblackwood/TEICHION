@@ -1,91 +1,103 @@
 # Security Policy
 
-TEICHION is an FPGA-backed hardware-security research project.
-
-The repository currently contains a Generation-0 deterministic seal-chain controller and its verification environment. It does **not** yet implement a production root of trust, cryptographic sealing engine, protected key store, persistent anti-rollback mechanism, or production FPGA deployment.
-
-Security reports should therefore distinguish between:
-
-- a defect in an implemented or verified property;
-- a documentation error that overstates a guarantee;
-- an expected limitation that is already documented as out of scope or not yet implemented.
+TEICHION is a hardware-security research project. Security reports are welcome, but the repository is not a production root of trust and should not be treated as one.
 
 ## Reporting a vulnerability
 
-Do **not** publish sensitive vulnerability details, exploit steps, secrets, keys, or proof-of-concept material in a public issue.
+Do not publish sensitive vulnerability details in a public issue, discussion, pull request, or commit.
 
-Preferred reporting path:
+Use GitHub's private security reporting path when available. A useful report should include:
 
-1. Use GitHub's private vulnerability-reporting / security-advisory interface for this repository when it is available.
-2. If no private reporting interface is exposed, open only a minimal public issue requesting a private contact channel. Do not include technical exploit details in that issue.
+- the affected component and revision;
+- the violated security property or invariant;
+- the conditions required to reproduce the problem;
+- a minimal reproducer when safe to provide;
+- expected behavior;
+- observed behavior;
+- realistic impact;
+- whether the issue crosses an implemented trust boundary or affects only a future target.
 
-General, non-sensitive defects may be reported through normal GitHub issues.
+Avoid including live credentials, private keys, customer data, operational evidence, or unnecessary exploit material.
+
+## Current security boundary
+
+The implemented hardware boundary is the Generation-0 seal-chain controller in:
+
+```text
+rtl/core/teichion_seal_chain.sv
+```
+
+Within the conditions exercised by the current verification suite, the controller provides deterministic transaction sequencing, previous-tag propagation, and receipt stability under downstream backpressure.
+
+The current `tag_i` input is externally supplied. It is not evidence of cryptographic authenticity.
+
+Canonical Seal Record V1 is specified and reference-verified at the byte level, but the hardware cryptographic datapath, protected key lifecycle, persistent epoch, host transport, and physical FPGA trust model are not implemented.
+
+The authoritative security-boundary description is:
+
+```text
+docs/security/THREAT_MODEL.md
+```
 
 ## Security-relevant scope
 
-Security-relevant reports may include defects involving:
+Reports are especially relevant when they affect:
 
-- sequence ownership or allocation;
-- previous-tag propagation;
-- request/context/receipt handshake semantics;
-- receipt stability under backpressure;
-- reset or genesis semantics;
-- chain-state advancement;
-- acceptance-boundary ambiguity;
-- verification gaps that permit an invalid security claim to pass;
-- future canonical-record parsing or encoding;
-- future cryptographic datapaths, key handling, transport, verifier, or persistence logic;
-- documentation that incorrectly promotes a TARGET or IMPLEMENTED property to VERIFIED.
+- sequence or previous-chain state;
+- reset or rollback semantics;
+- transaction acceptance;
+- canonical serialization;
+- malformed-input handling;
+- receipt stability;
+- cryptographic implementation;
+- key ownership or lifecycle;
+- persistent state;
+- host transport;
+- independent verification;
+- FPGA configuration or boot trust.
 
-## Generation-0 security boundary
+## Explicit non-properties
 
-Generation 0 verifies a narrow state-machine property.
+The current repository does not establish:
 
-Within one reset epoch, the current controller is expected to:
+- complete host telemetry;
+- cryptographic authenticity;
+- protected key storage;
+- persistent anti-rollback;
+- secure boot;
+- authenticated bitstreams;
+- side-channel resistance;
+- fault-injection resistance;
+- physical tamper resistance;
+- production certification.
 
-- allocate deterministic sequence context;
-- carry the previous accepted tag into the next context;
-- advance chain state after a tag result is accepted;
-- preserve receipt state while the downstream consumer applies backpressure;
-- allow only one transaction in flight.
+A missing TEICHION record is not proof that an external event did not occur.
 
-Generation 0 does **not** provide cryptographic authenticity.
+## Claim quality
 
-The current `tag_i` input is externally supplied. Generation 0 does not prove that this tag was produced by a trustworthy cryptographic engine.
+Security reports and fixes should distinguish:
 
-Generation-0 sequence monotonicity is also **intra-epoch**. Reset returns the controller to its explicit genesis state; persistent anti-rollback across reset or power loss is not yet implemented.
+- **TARGET**: intended architecture;
+- **IMPLEMENTED**: mechanism exists in source;
+- **VERIFIED**: the stated property is exercised by reproducible evidence.
+
+The normative evidence rules live in `docs/engineering/ASSURANCE_MODEL.md`.
+
+Do not promote a security claim because a primitive name, algorithm name, or future architecture appears in documentation.
 
 ## Out-of-scope reports
 
-The following are not vulnerabilities by themselves when they match the documented project state:
+The following are generally not security vulnerabilities by themselves:
 
-- absence of SHA-256 or HMAC hardware;
-- absence of device-key provisioning;
-- absence of persistent epoch or monotonic storage;
-- absence of production secure boot or bitstream-authentication guarantees;
-- absence of host transport or cross-platform collectors;
-- absence of physical tamper, fault-injection, or side-channel resistance;
-- behavior explicitly identified as TARGET rather than IMPLEMENTED or VERIFIED.
+- behavior explicitly documented as a current non-property;
+- unsupported production assumptions;
+- missing features that are already classified as future work;
+- findings that require changing the stated trust model before they become meaningful.
 
-A report is still valuable if it demonstrates that an implemented mechanism behaves differently from the documented boundary.
-
-## Report quality
-
-Useful reports should include:
-
-- affected commit or branch;
-- exact preconditions;
-- reproducible steps;
-- observed result;
-- expected result;
-- security impact;
-- whether reset, backpressure, malformed input, or sequence state is involved;
-- the smallest reproducer that demonstrates the issue.
-
-If AI tools materially assisted in discovering or preparing the report, disclose that fact and include independently reproduced evidence. AI-generated speculation without reproducible evidence is not sufficient for a security finding.
+A report may still be valuable as an engineering issue if it identifies ambiguity or an unsafe future dependency.
 
 ## Disclosure principle
 
-TEICHION favors precise, evidence-backed disclosure over premature severity claims.
+The goal is simple:
 
-A security claim is accepted only when its trust boundary, assumptions, reproducer, and impact are clear.
+> Preserve enough information to reproduce and fix the defect without exposing unnecessary operational detail.
