@@ -4,23 +4,25 @@ Closes #
 
 ## Objective
 
-What engineering problem does this pull request solve?
+What problem or proof obligation does this PR address?
 
-## What changed
+## Scope
 
-Describe the smallest meaningful set of changes introduced by this PR.
+### Changed
 
-## What did not change
+Describe the smallest meaningful change.
 
-State important non-goals so reviewers can detect accidental scope expansion.
+### Not changed
+
+List important non-goals.
 
 ## Security boundary impact
 
-Does this change affect any of the following?
+Check every affected area:
 
-- [ ] trust boundary
+- [ ] trust ownership
 - [ ] sequence / epoch state
-- [ ] previous-seal state
+- [ ] previous-chain state
 - [ ] reset / rollback semantics
 - [ ] acceptance semantics
 - [ ] canonical serialization
@@ -30,90 +32,69 @@ Does this change affect any of the following?
 - [ ] persistent state
 - [ ] independent verification
 - [ ] FPGA configuration / boot trust
-- [ ] none of the above
+- [ ] none
 
-Explain every checked item:
+Explain checked items:
 
 ## Claim-state changes
 
-For each affected capability, classify the resulting state:
-
-- **TARGET**: intended, not implemented
-- **IMPLEMENTED**: present in source
-- **VERIFIED**: present and exercised by reproducible verification
+- **TARGET**:
+- **IMPLEMENTED**:
+- **VERIFIED**:
 
 Do not promote a claim without evidence.
 
 ## Proof obligations
 
-List the properties this PR must demonstrate before merge.
-
 - [ ]
 - [ ]
 
-## Verification evidence
+## Verification
 
-Provide exact reproducible commands and results.
+Provide exact commands and relevant results:
 
 ```text
-<commands and relevant PASS output>
+<commands and PASS output>
 ```
 
-### Required checks
+Required checks:
 
-- [ ] `git diff --check` passes
-- [ ] local lint passes
-- [ ] local build passes
-- [ ] local simulation / tests pass
-- [ ] GitHub CI passes
-- [ ] no unexplained warnings remain
+- [ ] `git diff --check`
+- [ ] relevant local lint
+- [ ] relevant local build
+- [ ] relevant simulation / tests
+- [ ] GitHub CI
+- [ ] no unexplained warning remains
 
-## Adversarial / edge conditions considered
+## Edge conditions
 
-Describe relevant cases such as:
+Describe relevant cases such as reset, backpressure, malformed input, replay, reordering, overflow, rollback, untrusted host input, or partial transaction state.
 
-- reset;
-- backpressure;
-- malformed input;
-- replay;
-- reordering;
-- overflow;
-- power loss;
-- rollback;
-- untrusted host-controlled values;
-- partial transaction state.
-
-## Performance impact
+## Performance and portability
 
 State measured impact, no impact, or unknown.
 
-Do not make performance claims without measurements.
+List only platforms and toolchains actually exercised.
 
-## Portability impact
+## Documentation
 
-State which platforms or toolchains were actually exercised.
-
-Do not convert intended portability into verified portability.
-
-## Documentation impact
-
-Which public claims, architecture diagrams, threat-model statements, or developer instructions changed?
+Which public claim, protocol rule, threat-model statement, or developer instruction changed?
 
 ## Known limitations
 
-List limitations that remain after this PR.
+What remains unresolved after this PR?
 
 ## Review focus
 
-Tell the reviewer where the highest-risk reasoning is located.
+Where is the highest-risk reasoning?
 
 ## Merge checklist
 
-- [ ] Diff is limited to the issue scope
-- [ ] No generated artifacts or accidental files are included
-- [ ] No secrets, credentials, keys, or sensitive evidence are present
-- [ ] Security claims match implementation reality
-- [ ] Reset and persistence assumptions are explicit
-- [ ] Tests fail when the protected invariant is intentionally broken
-- [ ] Documentation and code agree
-- [ ] All MUST review findings are resolved
+- [ ] diff matches the stated scope
+- [ ] no accidental or generated files
+- [ ] no secrets, credentials, keys, or sensitive evidence
+- [ ] claims match implementation and evidence
+- [ ] reset and persistence assumptions are explicit where relevant
+- [ ] protected invariants have meaningful failure coverage
+- [ ] documentation and implementation agree
+- [ ] all MUST findings are resolved
