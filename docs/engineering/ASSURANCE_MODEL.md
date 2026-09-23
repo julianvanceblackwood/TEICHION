@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This document defines the minimum evidence required before TEICHION may describe a security-relevant property as TARGET, IMPLEMENTED, or VERIFIED.
+This document defines when TEICHION may describe a security-relevant property as TARGET, IMPLEMENTED, or VERIFIED.
 
-It is a repository engineering policy, not a certification claim.
+It is repository policy, not a certification claim.
 
-The words **MUST**, **SHOULD**, and **COULD** indicate review priority:
+Normative terms:
 
 - **MUST**: required for merge or claim promotion;
 - **SHOULD**: expected unless a documented reason justifies deviation;
@@ -16,13 +16,9 @@ The words **MUST**, **SHOULD**, and **COULD** indicate review priority:
 
 > A security claim may advance only as far as its evidence.
 
-A design document can establish intent.
+Design establishes intent. Source establishes implementation. Verification establishes exercised behavior under stated assumptions.
 
-Source code can establish implementation.
-
-A test can establish exercised behavior under defined conditions.
-
-None of these, by itself, proves properties outside its stated assumptions.
+None of those automatically proves properties outside its boundary.
 
 ## Claim states
 
@@ -30,205 +26,181 @@ None of these, by itself, proves properties outside its stated assumptions.
 
 A TARGET claim describes intended architecture or future work.
 
-A TARGET claim MUST:
+It MUST:
 
-- identify that it is not yet implemented;
+- be identified as not implemented;
 - avoid present-tense production language;
-- state the boundary it intends to protect;
-- identify unresolved dependencies when security relevant.
+- identify the boundary it is intended to protect;
+- identify unresolved security dependencies.
 
 ### IMPLEMENTED
 
 An IMPLEMENTED claim means the mechanism exists in repository source.
 
-An IMPLEMENTED claim MUST:
+It MUST:
 
-- point to the implementation boundary;
+- identify the implementation boundary;
 - define relevant inputs and outputs;
 - state reset and failure semantics;
-- identify host-controlled or externally controlled values;
+- identify externally controlled values;
 - avoid implying verification that has not occurred.
 
 ### VERIFIED
 
-A VERIFIED claim means the property is implemented and exercised by reproducible verification.
+A VERIFIED claim means the mechanism exists and the stated property is exercised by reproducible verification.
 
-A VERIFIED claim MUST include:
+It MUST include:
 
 - a precise property statement;
-- a reproducible test or analysis method;
+- a reproducible method;
 - deterministic pass/fail criteria where practical;
-- the tested toolchain or environment;
+- tested toolchain or environment;
 - explicit assumptions;
 - explicit non-properties.
 
-A VERIFIED claim is scoped only to the conditions actually exercised.
+VERIFIED is always scoped to the conditions actually exercised.
 
-## Evidence hierarchy
+## Evidence classes
 
-TEICHION treats the following as progressively stronger forms of evidence, without assuming that one automatically subsumes another:
+TEICHION uses the following evidence classes. They are not interchangeable and a later class does not erase assumptions from earlier work.
 
-1. **Design rationale**: explains intended semantics.
-2. **Source implementation**: demonstrates that the mechanism exists.
-3. **Static analysis / lint**: detects classes of structural or semantic defects.
-4. **Deterministic simulation / unit test**: exercises defined behavior.
-5. **Adversarial or negative testing**: demonstrates failure behavior and invariant protection.
-6. **Independent implementation / verifier**: reduces common-mode interpretation errors.
-7. **Formal specification / proof**: demonstrates a property under formal assumptions.
-8. **Physical hardware evaluation**: exercises implementation effects absent from simulation.
-9. **Independent security review**: challenges assumptions from outside the implementation path.
-
-A later evidence type does not erase the need to document its assumptions.
+1. **Design rationale**: intended semantics.
+2. **Source implementation**: mechanism exists.
+3. **Static analysis or lint**: structural and semantic checks.
+4. **Deterministic simulation or unit tests**: defined behavior is exercised.
+5. **Negative or adversarial tests**: failure behavior and invariant protection.
+6. **Independent implementation or verifier**: reduces common-mode interpretation error.
+7. **Formal analysis**: proves a property under formal assumptions.
+8. **Physical hardware evaluation**: exercises effects absent from simulation.
+9. **Independent security review**: challenges assumptions outside the implementation path.
 
 ## Merge gates
 
-Every substantive pull request MUST satisfy the gates relevant to its scope.
+### Scope
 
-### Scope gate
+A substantive change MUST correspond to a clear engineering problem or proof obligation.
 
-The change MUST correspond to a stated issue, proof obligation, or narrowly defined defect.
+Security-relevant work MUST NOT include unrelated refactors.
 
-Unrelated refactoring MUST NOT be mixed into security-relevant changes.
+### Hygiene
 
-### Hygiene gate
-
-The change MUST:
+A change MUST:
 
 - pass `git diff --check`;
-- exclude generated artifacts unless explicitly versioned by policy;
-- exclude credentials, secrets, private keys, sensitive evidence, and unrelated binary artifacts;
-- keep file placement consistent with repository architecture.
+- exclude accidental generated artifacts;
+- exclude secrets, credentials, private keys, and sensitive evidence;
+- keep files consistent with repository architecture.
 
-### Verification gate
+### Verification
 
-Changes to implemented behavior MUST have a reproducible verification path.
+Implemented behavior MUST have a reproducible verification path.
 
-For current Generation 0 RTL, required gates are:
+Current repository gates include:
 
 - warning-clean Verilator lint;
-- successful executable simulation build;
-- deterministic simulation PASS;
-- successful GitHub Actions verification.
+- executable RTL simulation;
+- deterministic Generation-0 PASS result;
+- canonical protocol vector reproduction;
+- canonical protocol negative tests;
+- GitHub Actions execution.
 
-### Security-boundary gate
+Only gates relevant to the changed boundary are required, but existing gates must remain green.
 
-A change MUST explicitly state whether it affects:
+### Security boundary
 
-- trust ownership;
-- sequence or epoch state;
-- reset behavior;
+A change MUST state whether it affects:
+
+- state ownership;
+- sequence or epoch semantics;
+- previous-chain state;
+- reset or rollback;
 - acceptance semantics;
-- previous-seal state;
+- canonical serialization;
 - cryptographic inputs or outputs;
 - key material;
 - persistent state;
 - transport framing;
-- independent verification.
+- independent verification;
+- FPGA configuration or boot trust.
 
-If affected, the corresponding threat-model documentation MUST be reviewed.
+If the implemented trust boundary changes, `docs/security/THREAT_MODEL.md` MUST be reviewed.
 
-### Claim gate
+### Claims
 
 Documentation MUST NOT get ahead of implementation.
 
 Implementation MUST NOT get ahead of verification claims.
 
-Verification claims MUST NOT extend beyond the tested assumptions.
+Verification claims MUST NOT exceed tested assumptions.
 
 ## Negative evidence
 
-TEICHION MUST distinguish between:
+TEICHION distinguishes:
 
 ```text
 not observed
 ```
 
-and:
+from:
 
 ```text
 proven not to have occurred
 ```
 
-The absence of a hardware receipt does not prove that an external event never occurred.
+A missing hardware receipt does not prove that an external event never occurred.
 
-A test that did not detect a failure does not prove absence of all failures.
+A test that does not expose a failure does not prove that the failure class is impossible.
 
 ## Reset and persistence
 
-Any property involving ordering, monotonicity, rollback resistance, or continuity MUST state whether it is:
+Any property involving ordering, continuity, rollback resistance, or monotonicity MUST state whether it is:
 
-- combinational;
 - transaction-local;
 - reset-epoch-local;
 - persistent across reset;
 - persistent across power loss.
 
-Generation-0 sequence monotonicity is currently reset-epoch-local.
+Generation-0 sequence monotonicity is reset-epoch-local.
 
-No document may describe it as persistent anti-rollback.
+It MUST NOT be described as persistent anti-rollback.
 
 ## Cryptographic claims
 
-A cryptographic claim MUST NOT become VERIFIED solely because a standard algorithm name appears in RTL.
+A standard algorithm name in source is not cryptographic assurance.
 
-Before a cryptographic sealing claim can be promoted, TEICHION SHOULD require at minimum:
+Before a sealing claim can become VERIFIED, TEICHION SHOULD require at minimum:
 
-- canonical byte-level input specification;
-- domain separation;
-- deterministic known-answer vectors;
-- independently generated reference vectors;
+- a canonical byte-level input contract;
+- explicit domain separation;
+- independently generated known-answer vectors;
+- RTL-to-reference agreement where applicable;
 - key-lifecycle definition;
-- reset / epoch semantics;
+- reset and epoch semantics;
 - malformed-input behavior;
 - verifier agreement.
 
-Physical side-channel or fault-resistance claims require separate evidence.
+Side-channel, fault-resistance, secure-boot, bitstream-authenticity, and physical-tamper claims require separate evidence.
 
 ## Test quality
 
 A verification artifact SHOULD demonstrate that it can fail.
 
-For important invariants, reviewers SHOULD ask:
+For an important invariant, review should ask:
 
 > If this invariant were intentionally broken, would the test detect it?
 
 A passing test that cannot detect the protected failure mode is weak evidence.
 
-## Review expectations
+## Current assured boundary
 
-Reviewers SHOULD inspect:
+Current automated evidence supports this narrow hardware statement:
 
-- correctness;
-- security assumptions;
-- state ownership;
-- reset behavior;
-- error handling;
-- malformed input;
-- concurrency / backpressure;
-- overflow;
-- rollback;
-- portability;
-- performance claims;
-- test strength;
-- documentation accuracy;
-- unnecessary complexity.
+> Within one reset epoch, the single-transaction Generation-0 controller deterministically exposes sequence and previous-tag context, advances chain state after tag acceptance, preserves receipt state under downstream backpressure, and returns to request acceptance after receipt completion.
 
-## Current Generation-0 assured boundary
+Current protocol evidence additionally establishes deterministic Canonical Seal Record V1 serialization and strict rejection behavior against the executable reference corpus.
 
-Current automated evidence supports the following narrow statement:
-
-> Within one reset epoch, the single-transaction Generation-0 controller deterministically exposes sequence and previous-tag context, advances its chain state after tag acceptance, preserves receipt state under downstream backpressure, and returns to request acceptance after receipt completion.
-
-This statement does not establish:
-
-- cryptographic authenticity;
-- trustworthiness of externally supplied `tag_i`;
-- persistent anti-rollback;
-- telemetry completeness;
-- protected key storage;
-- physical tamper resistance;
-- production FPGA trust.
+Neither statement establishes cryptographic authenticity, protected key storage, persistent anti-rollback, telemetry completeness, or physical FPGA trust.
 
 ## Principle
 
-> Assurance is the distance between what the system claims and what its evidence can reproduce. TEICHION should keep that distance as close to zero as possible.
+> Keep the distance between a security claim and reproducible evidence as close to zero as possible.
