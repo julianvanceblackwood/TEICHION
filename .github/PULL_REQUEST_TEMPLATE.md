@@ -1,29 +1,27 @@
-## Linked issue / proof obligation
+## Linked issue
 
 Closes #
 
-## Objective
+## Problem
 
-What problem or proof obligation does this PR address?
+What problem does this pull request solve?
 
-## Scope
+## Change
 
-### Changed
+Describe the change in concrete terms.
 
-Describe the smallest meaningful change.
+## Non-goals
 
-### Not changed
-
-List important non-goals.
+What is intentionally left unchanged?
 
 ## Security boundary impact
 
-Check every affected area:
+Check every area affected by this change:
 
-- [ ] trust ownership
+- [ ] state ownership
 - [ ] sequence / epoch state
 - [ ] previous-chain state
-- [ ] reset / rollback semantics
+- [ ] reset / rollback behavior
 - [ ] acceptance semantics
 - [ ] canonical serialization
 - [ ] cryptographic primitive
@@ -34,67 +32,53 @@ Check every affected area:
 - [ ] FPGA configuration / boot trust
 - [ ] none
 
-Explain checked items:
+Explain the checked items:
 
-## Claim-state changes
+## Evidence state
+
+Only fill in rows that changed.
 
 - **TARGET**:
 - **IMPLEMENTED**:
 - **VERIFIED**:
 
-Do not promote a claim without evidence.
-
-## Proof obligations
-
-- [ ]
-- [ ]
-
 ## Verification
 
-Provide exact commands and relevant results:
+Provide the exact commands used and the relevant result.
 
 ```text
-<commands and PASS output>
+<commands and result>
 ```
 
-Required checks:
-
 - [ ] `git diff --check`
-- [ ] relevant local lint
-- [ ] relevant local build
-- [ ] relevant simulation / tests
+- [ ] relevant lint
+- [ ] relevant build
+- [ ] relevant simulation or tests
 - [ ] GitHub CI
 - [ ] no unexplained warning remains
 
-## Edge conditions
+## Failure and edge cases
 
-Describe relevant cases such as reset, backpressure, malformed input, replay, reordering, overflow, rollback, untrusted host input, or partial transaction state.
-
-## Performance and portability
-
-State measured impact, no impact, or unknown.
-
-List only platforms and toolchains actually exercised.
+Describe the cases that matter for this change, such as reset, malformed input, backpressure, replay, reordering, overflow, rollback, untrusted input, or partial transaction state.
 
 ## Documentation
 
-Which public claim, protocol rule, threat-model statement, or developer instruction changed?
+List any public behavior, protocol rule, threat-model statement, or developer instruction changed by this PR.
 
 ## Known limitations
 
-What remains unresolved after this PR?
+What remains unresolved after this change?
 
 ## Review focus
 
-Where is the highest-risk reasoning?
+Point reviewers to the code or reasoning that deserves the most scrutiny.
 
 ## Merge checklist
 
 - [ ] diff matches the stated scope
 - [ ] no accidental or generated files
 - [ ] no secrets, credentials, keys, or sensitive evidence
-- [ ] claims match implementation and evidence
-- [ ] reset and persistence assumptions are explicit where relevant
-- [ ] protected invariants have meaningful failure coverage
-- [ ] documentation and implementation agree
-- [ ] all MUST findings are resolved
+- [ ] documented behavior matches implementation
+- [ ] relevant reset and persistence assumptions are explicit
+- [ ] important invariants have meaningful failure coverage
+- [ ] review findings are resolved

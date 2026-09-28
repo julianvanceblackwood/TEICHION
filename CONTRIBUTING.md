@@ -1,21 +1,17 @@
 # Contributing to TEICHION
 
-TEICHION accepts small, reviewable changes that keep security claims, state ownership, and verification evidence explicit.
+TEICHION favors small changes that are easy to audit and easy to reproduce.
 
-## Before implementing
+## Start clean
 
 For non-trivial work:
 
-1. identify the engineering problem or proof obligation;
-2. confirm the current trust boundary and non-goals;
+1. identify the engineering problem;
+2. confirm the affected trust boundary;
 3. branch from the current `main`;
-4. keep the change narrow enough to audit.
+4. keep the patch focused.
 
-Documentation-only corrections that do not change technical meaning may proceed without a dedicated issue.
-
-## Branch discipline
-
-Start from a clean, current `main`:
+Documentation corrections that do not change technical meaning do not require a dedicated issue.
 
 ```bash
 git fetch origin --prune
@@ -36,11 +32,7 @@ ci/
 refactor/
 ```
 
-One branch should represent one engineering purpose.
-
-## Local preflight
-
-Before editing:
+Before editing, confirm that the working tree is clean:
 
 ```bash
 git status
@@ -48,13 +40,11 @@ git branch --show-current
 git diff --check
 ```
 
-Resolve unexpected local changes or branch divergence before starting new work.
+## Verification
 
-## Verification gates
+Run the checks that cover the boundary you changed.
 
 ### Generation-0 RTL
-
-Lint:
 
 ```bash
 verilator \
@@ -64,11 +54,7 @@ verilator \
   rtl/core/teichion_seal_chain.sv \
   tb/core/teichion_seal_chain_tb.sv \
   --top-module teichion_seal_chain_tb
-```
 
-Build:
-
-```bash
 verilator \
   --binary \
   --timing \
@@ -76,15 +62,11 @@ verilator \
   rtl/core/teichion_seal_chain.sv \
   tb/core/teichion_seal_chain_tb.sv \
   --top-module teichion_seal_chain_tb
-```
 
-Run:
-
-```bash
 ./obj_dir/Vteichion_seal_chain_tb
 ```
 
-Expected result:
+Expected simulation result:
 
 ```text
 PASS: deterministic sequencing, chain carry, and receipt backpressure verified
@@ -104,25 +86,21 @@ python3 -m unittest discover \
   -v
 ```
 
-A relevant change must pass its local gate before push and its GitHub Actions gate before merge.
+A relevant local gate should pass before push. GitHub Actions should pass before merge.
 
-## Change hygiene
+## Patch discipline
 
-Every contribution must:
+Every contribution should:
 
 - pass `git diff --check`;
-- exclude generated artifacts unless repository policy explicitly versions them;
+- keep generated artifacts out of Git unless they are intentionally versioned;
 - avoid unrelated formatting and refactors;
-- keep tests traceable to the behavior they protect;
+- keep tests tied to the behavior they protect;
 - preserve explicit reset and handshake semantics;
 - update the relevant normative document when a trust boundary changes;
-- avoid claims unsupported by implementation and evidence.
+- avoid claims that exceed implementation or test evidence.
 
-Prefer the smallest patch that solves the stated problem.
-
-## Commit discipline
-
-Before a commit:
+Before committing:
 
 ```bash
 git diff --check
@@ -138,94 +116,35 @@ git diff --cached --check
 git diff --cached
 ```
 
-Commit messages should describe technical intent, not activity.
+Commit messages should describe technical intent.
 
-Cryptographically signed commits are encouraged for security-sensitive work.
+## Evidence states
 
-## Claim discipline
+TEICHION uses three terms in security-relevant documentation:
 
-TEICHION uses three claim states:
+- **TARGET**: intended architecture that is not implemented;
+- **IMPLEMENTED**: mechanism exists in source;
+- **VERIFIED**: a stated property is exercised by reproducible verification.
 
-- **TARGET**: intended, not implemented;
-- **IMPLEMENTED**: present in source;
-- **VERIFIED**: present and exercised by reproducible verification.
+The rules for these terms live in `docs/engineering/ASSURANCE_MODEL.md`.
 
-The normative promotion rules live in `docs/engineering/ASSURANCE_MODEL.md`.
-
-A contribution must not:
-
-- describe target behavior as implemented;
-- describe implemented behavior as verified without evidence;
-- convert reset-local ordering into persistent anti-rollback;
-- infer event non-occurrence from missing telemetry;
-- describe externally supplied Generation-0 `tag_i` as cryptographically trusted.
-
-## Security-sensitive changes
-
-Explicit security analysis is required when a change affects:
-
-- trust ownership;
-- sequence or epoch state;
-- previous-chain state;
-- reset or rollback semantics;
-- acceptance semantics;
-- canonical serialization;
-- cryptographic primitives;
-- key handling;
-- persistent state;
-- host transport;
-- independent verification;
-- FPGA configuration or boot trust.
-
-Potential vulnerabilities must follow `SECURITY.md`.
+Do not describe reset-local ordering as persistent anti-rollback, infer event non-occurrence from missing telemetry, or treat the current external `tag_i` as a cryptographically trusted result.
 
 ## Pull requests
 
-A pull request should make the following clear:
+A useful pull request makes these points easy to find:
 
-- problem or proof obligation;
-- exact scope;
-- deliberate non-goals;
+- problem being solved;
+- exact scope and non-goals;
 - security-boundary impact;
-- claim-state changes;
-- reproducible verification;
+- verification commands and results;
 - known limitations;
-- highest-risk reasoning.
+- areas where review should concentrate.
 
-The repository template exists to make those questions explicit, not to create checkbox theater.
+The pull request template is a review aid, not a substitute for technical reasoning.
 
-## Review standard
+## Merge standard
 
-Review should challenge:
+A change is ready when the diff matches its stated purpose, relevant local checks pass, CI is green, documentation matches behavior, and known review findings are resolved.
 
-- functional correctness;
-- state-machine correctness;
-- trust ownership;
-- reset and rollback behavior;
-- malformed-input handling;
-- backpressure and error behavior;
-- overflow and boundary conditions;
-- test strength;
-- documentation accuracy;
-- unnecessary complexity;
-- unsupported portability or performance claims.
-
-Review language:
-
-- **MUST**: required before merge;
-- **SHOULD**: expected unless a documented reason justifies deviation;
-- **COULD**: optional improvement.
-
-## Merge gate
-
-A change is ready only when:
-
-- the diff matches its stated scope;
-- required local checks pass;
-- GitHub CI passes;
-- no known warning or failing verification remains;
-- security-impact statements are complete;
-- normative documentation matches implementation;
-- unresolved review findings are closed.
-
-A green build is necessary, not sufficient.
+A green build is necessary. It is not evidence for properties the test suite does not exercise.
