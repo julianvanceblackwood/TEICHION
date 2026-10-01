@@ -2,9 +2,9 @@
 
 ## Hardware-Sealed Security Evidence Boundary
 
-TEICHION is a hardware-security research project focused on one problem: once a record is accepted by a hardware boundary, its ordering and chain relationship should remain independently checkable even if the host later becomes untrusted.
+TEICHION is a hardware-security research project built around one problem: after a record is accepted by the hardware boundary, its ordering and chain relationship should remain independently checkable even if the host later becomes untrusted.
 
-The project does not try to prove that every external event was observed. It only makes claims about records that actually cross the TEICHION acceptance boundary.
+TEICHION does not claim that every external event was observed. Its claims are limited to records that cross the acceptance boundary.
 
 ## Current state
 
@@ -24,7 +24,7 @@ The project does not try to prove that every external event was observed. It onl
 
 Generation 0 established the chain-state controller.
 
-Generation 1 fixed the byte representation that future cryptographic hardware will authenticate.
+Generation 1 defines the byte representation intended for future cryptographic authentication.
 
 Generation 2 is limited to the SHA-256 compression primitive. Full message hashing, HMAC, key handling, persistence, transport, and deployment remain separate work.
 
@@ -79,7 +79,7 @@ potentially compromised host
 independent verification
 ```
 
-The distinction matters:
+These states are not equivalent:
 
 ```text
 event occurred
@@ -159,7 +159,7 @@ previous_seal[32] ||
 payload[payload_length]
 ```
 
-Important properties:
+Record properties:
 
 - fixed field order and widths;
 - unsigned big-endian integers;
@@ -199,7 +199,7 @@ Seal[n] =
     )
 ```
 
-This is not implemented hardware behavior yet.
+This construction is still a target and is not implemented in RTL.
 
 Cryptographic authenticity requires, at minimum, a verified SHA-256 datapath, HMAC construction, key lifecycle, canonical-record integration, reset and epoch handling, and an independent verifier.
 
@@ -251,7 +251,7 @@ These checks cover canonical serialization, rejection behavior, mutations, profi
 
 ## Security limits
 
-The repository does not currently establish:
+Current evidence does not establish:
 
 - complete host telemetry;
 - cryptographic authenticity;
@@ -289,7 +289,7 @@ TEICHION/
 
 ## Documentation ownership
 
-Each document has one job:
+Document roles are intentionally separate:
 
 - `README.md`: project overview and current implementation state;
 - `docs/engineering/ASSURANCE_MODEL.md`: evidence and claim policy;
@@ -303,4 +303,4 @@ If a summary conflicts with a normative document, the normative document takes p
 
 The next implementation target is a vendor-neutral SHA-256 compression primitive for one 512-bit message block and one 256-bit input chaining state.
 
-That work is intentionally narrower than "SHA-256 support." Padding, arbitrary-length message handling, HMAC, key handling, and canonical-record integration remain separate verification boundaries.
+The scope is narrower than "SHA-256 support." Padding, arbitrary-length message handling, HMAC, key handling, and canonical-record integration remain separate verification boundaries.
