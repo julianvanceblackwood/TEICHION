@@ -12,7 +12,7 @@ Describe the change in concrete terms.
 
 ## Non-goals
 
-What is intentionally left unchanged?
+What remains unchanged?
 
 ## Security boundary impact
 

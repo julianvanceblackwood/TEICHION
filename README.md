@@ -289,7 +289,7 @@ TEICHION/
 
 ## Documentation ownership
 
-Document roles are intentionally separate:
+Each document has a distinct role:
 
 - `README.md`: project overview and current implementation state;
 - `docs/engineering/ASSURANCE_MODEL.md`: evidence and claim policy;
