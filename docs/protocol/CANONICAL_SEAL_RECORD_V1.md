@@ -205,7 +205,7 @@ A parser MUST reject a presented internal record representation whose domain doe
 0x01
 ```
 
-The domain string and version byte intentionally both bind V1.
+The domain string and version byte both bind V1 by design.
 
 A mismatch is an error, not a negotiation request.
 
@@ -427,7 +427,7 @@ A V1 record may become accepted only when all of the following hold:
 8. no trailing or truncated bytes remain in the enclosing frame;
 9. hardware chain context can be snapshotted without violating current transaction state.
 
-Transport-specific framing is intentionally outside this document.
+Transport-specific framing is outside the scope of this document.
 
 The transport specification must eventually prove how conditions 1 through 9 are established.
 
