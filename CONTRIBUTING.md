@@ -93,7 +93,7 @@ A relevant local gate should pass before push. GitHub Actions should pass before
 Every contribution should:
 
 - pass `git diff --check`;
-- keep generated artifacts out of Git unless they are intentionally versioned;
+- keep generated artifacts out of Git unless they are explicitly versioned;
 - avoid unrelated formatting and refactors;
 - keep tests tied to the behavior they protect;
 - preserve explicit reset and handshake semantics;
