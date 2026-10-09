@@ -304,3 +304,4 @@ If a summary conflicts with a normative document, the normative document takes p
 The next implementation target is a vendor-neutral SHA-256 compression primitive for one 512-bit message block and one 256-bit input chaining state.
 
 The scope is narrower than "SHA-256 support." Padding, arbitrary-length message handling, HMAC, key handling, and canonical-record integration remain separate verification boundaries.
+
