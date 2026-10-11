@@ -72,7 +72,7 @@ The repository does not currently establish:
 
 A missing TEICHION record is not proof that an external event did not occur.
 
-Findings against an explicitly documented non-property may still be useful as engineering feedback, but they should not be presented as a broken guarantee.
+Findings in these areas may still be useful engineering feedback, but they should not be described as violations of a guarantee the project does not make.
 
 ## Disclosure
 

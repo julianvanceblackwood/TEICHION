@@ -2,7 +2,7 @@
 
 ## Hardware-Sealed Security Evidence Boundary
 
-TEICHION is a hardware-security research project built around one problem: after a record is accepted by the hardware boundary, its ordering and chain relationship should remain independently checkable even if the host later becomes untrusted.
+TEICHION is a hardware-security research project focused on one problem: once a record crosses the hardware acceptance boundary, its order and chain relationship should remain independently checkable even if the host later becomes untrusted.
 
 TEICHION does not claim that every external event was observed. Its claims are limited to records that cross the acceptance boundary.
 
@@ -79,7 +79,7 @@ potentially compromised host
 independent verification
 ```
 
-These states are not equivalent:
+These are different states:
 
 ```text
 event occurred
@@ -129,7 +129,7 @@ IDLE
 
 The current `tag_i` input is external. Generation 0 verifies state behavior around that input. It does not claim that the tag is cryptographically authentic.
 
-The current deterministic testbench exercises:
+The current testbench covers:
 
 - reset to a zero-state genesis;
 - sequential allocation within one reset epoch;
@@ -304,4 +304,3 @@ If a summary conflicts with a normative document, the normative document takes p
 The next implementation target is a vendor-neutral SHA-256 compression primitive for one 512-bit message block and one 256-bit input chaining state.
 
 The scope is narrower than "SHA-256 support." Padding, arbitrary-length message handling, HMAC, key handling, and canonical-record integration remain separate verification boundaries.
-
