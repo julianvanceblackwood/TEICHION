@@ -1,6 +1,6 @@
 # Contributing to TEICHION
 
-TEICHION favors small changes that are easy to audit and easy to reproduce.
+TEICHION favors small, reviewable changes with reproducible verification.
 
 ## Start clean
 
@@ -132,7 +132,7 @@ Do not describe reset-local ordering as persistent anti-rollback, infer event no
 
 ## Pull requests
 
-A useful pull request makes these points easy to find:
+A pull request should make the following easy to find:
 
 - problem being solved;
 - exact scope and non-goals;
