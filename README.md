@@ -29,7 +29,7 @@ Generation 1 defines the byte representation intended for future cryptographic a
 
 Generation 2 is limited to the SHA-256 compression primitive. Full message hashing, HMAC, key handling, persistence, transport, and deployment remain separate work.
 
-Work has started with an independent Python reference layer for SHA-256 32-bit word semantics and logical primitives. It currently covers 32-bit masking, rotate and shift behavior, Choice, Majority, and the SHA-256 Sigma functions. Message scheduling, compression rounds, and RTL remain pending.
+The first Generation 2 step is now in place. A small Python reference layer defines the 32-bit operations that the later compression core will rely on. It covers masking, rotate and shift behavior, Choice, Majority, and the SHA-256 Sigma functions. Message scheduling, compression rounds, and RTL are still pending.
 
 ## Why the boundary exists
 
@@ -192,7 +192,7 @@ test_vectors/canonical_seal_record_v1.json
 
 ## Generation 2: SHA-256 reference primitives
 
-Generation 2 begins with an independent software reference before the RTL implementation.
+Generation 2 starts with reference code before the hardware implementation.
 
 Reference implementation:
 
@@ -206,16 +206,16 @@ Unit tests:
 tests/reference/test_sha256_compress.py
 ```
 
-The current reference layer covers:
+The current layer covers:
 
-- explicit 32-bit word masking;
-- rotate-right and logical right-shift behavior;
-- shift-count validation;
-- SHA-256 Choice and Majority functions;
-- uppercase Sigma functions used by the compression rounds;
-- lowercase sigma functions used by the message schedule.
+- 32-bit word masking
+- rotate-right and logical right-shift behavior
+- shift-count validation
+- Choice and Majority
+- uppercase Sigma functions used by compression rounds
+- lowercase sigma functions used by the message schedule
 
-This layer is intended to act as a software reference for later RTL comparison. It does not yet implement the message schedule, the 64 compression rounds, padding, streaming, HMAC, or the hardware datapath.
+This code will be used to check the later RTL against a separately implemented result. It does not yet implement the message schedule, the 64 compression rounds, padding, streaming, HMAC, or the hardware datapath.
 
 ## Target cryptographic construction
 
@@ -285,7 +285,7 @@ These checks cover canonical serialization, rejection behavior, mutations, profi
 python3 -B -m unittest tests.reference.test_sha256_compress -v
 ```
 
-These tests cover the current 32-bit software primitives only. They do not verify message scheduling, the 64-round compression function, RTL behavior, or full SHA-256 hashing.
+These tests cover the current 32-bit reference functions. Message scheduling, the compression rounds, RTL behavior, and full SHA-256 hashing are not covered yet.
 
 ## Security limits
 
@@ -343,6 +343,6 @@ If a summary conflicts with a normative document, the normative document takes p
 
 ## Next technical boundary
 
-Generation 2 is now building the independent software reference before the hardware implementation. The next implementation boundary is explicit 512-bit block parsing and SHA-256 message-schedule construction.
+The next step is explicit 512-bit block parsing and SHA-256 message-schedule construction in the software reference.
 
 The full Generation 2 target remains a vendor-neutral compression primitive that transforms one 512-bit message block and one 256-bit input chaining state into one 256-bit next chaining state. Padding, arbitrary-length message handling, HMAC, key handling, and canonical-record integration remain separate verification boundaries.
