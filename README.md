@@ -10,11 +10,12 @@ TEICHION does not claim that every external event was observed. Its claims are l
 
 | Area | Status |
 | --- | --- |
-| Project stage | Generation 1 complete, Generation 2 scoped |
+| Project stage | Generation 1 complete, Generation 2 in progress |
 | RTL | SystemVerilog |
 | Hardware state controller | Implemented |
 | Canonical Seal Record V1 | Implemented and reference-verified |
 | Protocol reference | Python, standard library only |
+| SHA-256 reference primitives | Implemented with unit coverage |
 | RTL verification | Verilator lint, build, simulation |
 | Cryptographic datapath | Not implemented |
 | Protected device key | Not implemented |
@@ -27,6 +28,8 @@ Generation 0 established the chain-state controller.
 Generation 1 defines the byte representation intended for future cryptographic authentication.
 
 Generation 2 is limited to the SHA-256 compression primitive. Full message hashing, HMAC, key handling, persistence, transport, and deployment remain separate work.
+
+The first Generation 2 step is now in place. A small Python reference layer defines the 32-bit operations that the later compression core will rely on. It covers masking, rotate and shift behavior, Choice, Majority, and the SHA-256 Sigma functions. Message scheduling, compression rounds, and RTL are still pending.
 
 ## Why the boundary exists
 
@@ -187,6 +190,33 @@ Machine-readable vectors:
 test_vectors/canonical_seal_record_v1.json
 ```
 
+## Generation 2: SHA-256 reference primitives
+
+Generation 2 starts with reference code before the hardware implementation.
+
+Reference implementation:
+
+```text
+tools/reference/sha256_compress.py
+```
+
+Unit tests:
+
+```text
+tests/reference/test_sha256_compress.py
+```
+
+The current layer covers:
+
+- 32-bit word masking
+- rotate-right and logical right-shift behavior
+- shift-count validation
+- Choice and Majority
+- uppercase Sigma functions used by compression rounds
+- lowercase sigma functions used by the message schedule
+
+This code will be used to check the later RTL against a separately implemented result. It does not yet implement the message schedule, the 64 compression rounds, padding, streaming, HMAC, or the hardware datapath.
+
 ## Target cryptographic construction
 
 The planned seal construction is:
@@ -249,6 +279,14 @@ python3 -m unittest discover \
 
 These checks cover canonical serialization, rejection behavior, mutations, profile limits, and exact round trips. They do not establish cryptographic authenticity.
 
+### SHA-256 reference primitives
+
+```bash
+python3 -B -m unittest tests.reference.test_sha256_compress -v
+```
+
+These tests cover the current 32-bit reference functions. Message scheduling, the compression rounds, RTL behavior, and full SHA-256 hashing are not covered yet.
+
 ## Security limits
 
 Current evidence does not establish:
@@ -281,7 +319,11 @@ TEICHION/
 ├── tb/core/
 ├── test_vectors/
 ├── tests/reference/
+│   ├── test_canonical_record_v1.py
+│   └── test_sha256_compress.py
 ├── tools/reference/
+│   ├── canonical_record_v1.py
+│   └── sha256_compress.py
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 └── README.md
@@ -301,6 +343,6 @@ If a summary conflicts with a normative document, the normative document takes p
 
 ## Next technical boundary
 
-The next implementation target is a vendor-neutral SHA-256 compression primitive for one 512-bit message block and one 256-bit input chaining state.
+The next step is explicit 512-bit block parsing and SHA-256 message-schedule construction in the software reference.
 
-The scope is narrower than "SHA-256 support." Padding, arbitrary-length message handling, HMAC, key handling, and canonical-record integration remain separate verification boundaries.
+The full Generation 2 target remains a vendor-neutral compression primitive that transforms one 512-bit message block and one 256-bit input chaining state into one 256-bit next chaining state. Padding, arbitrary-length message handling, HMAC, key handling, and canonical-record integration remain separate verification boundaries.
