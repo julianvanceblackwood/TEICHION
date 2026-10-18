@@ -77,7 +77,9 @@ Before merge:
 - existing required gates must remain green;
 - documentation must match the implemented behavior.
 
-Current executable gates cover Generation-0 RTL behavior and Canonical Seal Record V1 reference behavior.
+Current reproducible checks cover Generation-0 RTL behavior, Canonical Seal Record V1 reference behavior, and the Generation-2 SHA-256 32-bit reference primitives.
+
+The SHA-256 reference check is limited to the current software primitive layer. It does not verify message scheduling, compression rounds, RTL, full-message SHA-256, or HMAC.
 
 ## Security-boundary changes
 
@@ -164,4 +166,6 @@ Current automated evidence supports the following hardware statement:
 
 Current protocol evidence also supports deterministic Canonical Seal Record V1 serialization and strict rejection behavior against the executable reference corpus.
 
-Neither statement establishes cryptographic authenticity, protected key storage, persistent anti-rollback, telemetry completeness, or physical FPGA trust.
+Current Generation-2 software evidence also supports the tested 32-bit reference operations: masking, rotate-right, logical right shift, Choice, Majority, and the SHA-256 Sigma functions. It does not establish a complete compression implementation.
+
+None of these statements establishes cryptographic authenticity, protected key storage, persistent anti-rollback, telemetry completeness, or physical FPGA trust.
