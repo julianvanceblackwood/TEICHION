@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
 """
-Independent SHA-256 compression reference primitives for TEICHION.
+Reference implementations of the SHA-256 word operations used by TEICHION.
 
-This module begins with the 32-bit logical functions required by SHA-256.
-It does not yet implement message scheduling, compression rounds, padding,
-streaming, HMAC, or TEICHION record integration.
+The functions in this file keep Python arithmetic within SHA-256's 32-bit
+word semantics. They cover masking, rotates, shifts, Choice, Majority, and
+the Sigma functions used by the compression algorithm.
+
+Message scheduling and compression rounds are intentionally not implemented
+here yet.
 """
 
 from __future__ import annotations
 
 
 WORD_BITS = 32
+
+# Python integers are unbounded, so the reference model masks values back to
+# the 32-bit word width defined by SHA-256.
 WORD_MASK = (1 << WORD_BITS) - 1
 
 
 def u32(value: int) -> int:
+    """Return the low 32 bits of value."""
     return value & WORD_MASK
 
 
@@ -27,6 +34,7 @@ def _require_shift_count(count: int) -> None:
 
 
 def rotr32(value: int, count: int) -> int:
+    """Rotate a 32-bit word right by count bits."""
     _require_shift_count(count)
 
     value = u32(value)
@@ -41,12 +49,14 @@ def rotr32(value: int, count: int) -> int:
 
 
 def shr32(value: int, count: int) -> int:
+    """Logically shift a 32-bit word right by count bits."""
     _require_shift_count(count)
 
     return u32(value) >> count
 
 
 def ch(x: int, y: int, z: int) -> int:
+    """Return the SHA-256 Choice function for three 32-bit words."""
     x = u32(x)
     y = u32(y)
     z = u32(z)
@@ -58,6 +68,7 @@ def ch(x: int, y: int, z: int) -> int:
 
 
 def maj(x: int, y: int, z: int) -> int:
+    """Return the SHA-256 Majority function for three 32-bit words."""
     x = u32(x)
     y = u32(y)
     z = u32(z)
@@ -70,6 +81,7 @@ def maj(x: int, y: int, z: int) -> int:
 
 
 def big_sigma0(x: int) -> int:
+    """Return the SHA-256 uppercase Sigma-0 function."""
     return u32(
         rotr32(x, 2)
         ^ rotr32(x, 13)
@@ -78,6 +90,7 @@ def big_sigma0(x: int) -> int:
 
 
 def big_sigma1(x: int) -> int:
+    """Return the SHA-256 uppercase Sigma-1 function."""
     return u32(
         rotr32(x, 6)
         ^ rotr32(x, 11)
@@ -86,6 +99,7 @@ def big_sigma1(x: int) -> int:
 
 
 def small_sigma0(x: int) -> int:
+    """Return the SHA-256 lowercase sigma-0 schedule function."""
     return u32(
         rotr32(x, 7)
         ^ rotr32(x, 18)
@@ -94,6 +108,7 @@ def small_sigma0(x: int) -> int:
 
 
 def small_sigma1(x: int) -> int:
+    """Return the SHA-256 lowercase sigma-1 schedule function."""
     return u32(
         rotr32(x, 17)
         ^ rotr32(x, 19)
