@@ -86,14 +86,6 @@ python3 -m unittest discover \
   -v
 ```
 
-### SHA-256 reference primitives
-
-```bash
-python3 -B -m unittest tests.reference.test_sha256_compress -v
-```
-
-This check covers only the current 32-bit reference primitives. It does not verify message scheduling, compression rounds, RTL, full SHA-256 hashing, or HMAC.
-
 A relevant local gate should pass before push. GitHub Actions should pass before merge.
 
 ## Patch discipline
