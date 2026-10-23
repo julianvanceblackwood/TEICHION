@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Small software reference for the SHA-256 word operations used by TEICHION.
+Reference helpers for the 32-bit SHA-256 operations used by TEICHION.
 
-Python integers do not wrap at 32 bits, so the word width is kept explicit
-throughout these helpers. This layer covers masking, rotates, logical shifts,
-Choice, Majority, and the Sigma functions.
+Python integers are unbounded, while SHA-256 works on 32-bit words. These
+helpers keep that width explicit and provide the bit operations needed before
+the message schedule and compression rounds are added.
 
-The message schedule and compression rounds are kept out of this layer for now.
+This is not a complete SHA-256 implementation. It currently covers masking,
+rotates, logical shifts, Choice, Majority, and the Sigma functions.
 """
 
 from __future__ import annotations
@@ -14,8 +15,8 @@ from __future__ import annotations
 
 WORD_BITS = 32
 
-# Python integers do not wrap at 32 bits. Keep each value within the SHA-256
-# word width before it is used by the reference operations.
+# SHA-256 arithmetic is defined on 32-bit words. Mask Python's unbounded
+# integers so each helper sees the same low 32 bits the RTL will operate on.
 WORD_MASK = (1 << WORD_BITS) - 1
 
 
@@ -41,6 +42,8 @@ def rotr32(value: int, count: int) -> int:
     if count == 0:
         return value
 
+    # Move the shifted-out low bits back to the high side, then keep the
+    # result inside one SHA-256 word.
     return u32(
         (value >> count)
         | (value << (WORD_BITS - count))
@@ -60,6 +63,8 @@ def ch(x: int, y: int, z: int) -> int:
     y = u32(y)
     z = u32(z)
 
+    # Python's bitwise NOT is not limited to 32 bits. Normalizing the final
+    # expression keeps the result aligned with the SHA-256 word width.
     return u32(
         (x & y)
         ^ ((~x) & z)
