@@ -300,6 +300,8 @@ TEICHION/
 
 ## Documentation ownership
 
+Independent technical reviewers can use the [external engineering evaluation brief](docs/EXTERNAL_EVALUATION.md) to check current claims, reproductions, limitations and next verification gates.
+
 Each document has a distinct role:
 
 - `README.md`: project overview and current implementation state;
