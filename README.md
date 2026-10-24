@@ -1,3 +1,9 @@
+<p align="center"><img src="assets/research-hero.svg" width="100%" alt="TEICHION technical identity and conceptual hardware record-acceptance and sequence chain." /></p>
+
+[**Current state**](#current-state) · [**Protocol contract**](docs/protocol/CANONICAL_SEAL_RECORD_V1.md) · [**Verification**](#verification) · [**External review**](docs/EXTERNAL_EVALUATION.md)
+
+**IMPLEMENTED:** chain-state RTL and canonical record reference. **NOT YET CLAIMED:** cryptographic authentication, protected keys, persistence or physical FPGA security.
+
 # TEICHION
 
 ## Hardware-Sealed Security Evidence Boundary
@@ -6,11 +12,16 @@ TEICHION is a hardware-security research project focused on one problem: once a 
 
 TEICHION does not claim that every external event was observed. Its claims are limited to records that cross the acceptance boundary.
 
-## Accepted-record sequence / concept
+## Visual model
 
-![Animated TEICHION hardware sequencing schematic](assets/research-flow.gif)
+<details>
+<summary><strong>View animated record-sequence schematic</strong></summary>
 
-*Conceptual chain-state animation; not a cryptographic sealing demo or physical FPGA measurement.* Review the [external engineering evaluation](docs/EXTERNAL_EVALUATION.md) and the [current implementation state](#current-state) for supported and unsupported claims.
+![TEICHION conceptual accepted-record flow](assets/research-flow.gif)
+
+This is an explanatory animation of sequence state, not proof of HMAC, FPGA security or persistent anti-rollback.
+
+</details>
 
 ## Current state
 
