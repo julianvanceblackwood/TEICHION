@@ -116,6 +116,12 @@ record was accepted
 
 A missing TEICHION record is not proof that an external event did not occur.
 
+## Implementation boundary map
+
+![TEICHION architectural map distinguishing implemented chain-state RTL and canonical records from external tags and planned cryptography](assets/technical-map.svg)
+
+*The diagram distinguishes an externally supplied tag from a computed cryptographic seal. Full cryptographic and physical assurance is not claimed.*
+
 ## Generation 0: chain-state controller
 
 The current RTL primitive is:
