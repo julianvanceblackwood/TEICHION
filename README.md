@@ -1,5 +1,8 @@
 <p align="center"><img src="assets/research-hero.svg" width="100%" alt="TEICHION technical identity and conceptual hardware record-acceptance and sequence chain." /></p>
 
+[![RTL verification](https://github.com/julianvanceblackwood/TEICHION/actions/workflows/rtl.yml/badge.svg)](https://github.com/julianvanceblackwood/TEICHION/actions/workflows/rtl.yml)
+[![Canonical protocol](https://github.com/julianvanceblackwood/TEICHION/actions/workflows/protocol.yml/badge.svg)](https://github.com/julianvanceblackwood/TEICHION/actions/workflows/protocol.yml)
+
 [**Current state**](#current-state) · [**Protocol contract**](docs/protocol/CANONICAL_SEAL_RECORD_V1.md) · [**Verification**](#verification) · [**External review**](docs/EXTERNAL_EVALUATION.md)
 
 **IMPLEMENTED:** chain-state RTL and canonical record reference. **NOT YET CLAIMED:** cryptographic authentication, protected keys, persistence or physical FPGA security.
