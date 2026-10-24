@@ -6,6 +6,12 @@ TEICHION is a hardware-security research project focused on one problem: once a 
 
 TEICHION does not claim that every external event was observed. Its claims are limited to records that cross the acceptance boundary.
 
+## Accepted-record sequence / concept
+
+![Animated TEICHION hardware sequencing schematic](assets/research-flow.gif)
+
+*Conceptual chain-state animation; not a cryptographic sealing demo or physical FPGA measurement.* Review the [external engineering evaluation](docs/EXTERNAL_EVALUATION.md) and the [current implementation state](#current-state) for supported and unsupported claims.
+
 ## Current state
 
 | Area | Status |
